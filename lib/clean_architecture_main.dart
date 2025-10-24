@@ -1,6 +1,7 @@
 // Archivo principal con Clean Architecture configurada
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'database_test_screen.dart';
 
 // Importar toda la estructura de Clean Architecture
 import 'src/domain/domain.dart';
@@ -76,6 +77,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ref.read(userProvider.notifier).logout();
               },
             ),
+          // Add database test button
+          IconButton(
+            icon: const Icon(Icons.network_check),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const DatabaseConnectionTest(),
+                ),
+              );
+            },
+            tooltip: 'Probar Conexión BD',
+          ),
         ],
       ),
       body: userState.isAuthenticated ? _buildMainContent() : _buildLoginForm(),

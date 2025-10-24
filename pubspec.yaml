@@ -10,8 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Base de datos
-  sqflite: ^2.3.0
+  # Base de datos - PostgreSQL
+  postgres: ^3.4.8
+
+  # File system access (required by some plugins)
   path_provider: ^2.1.1
 
   # State Management
@@ -27,8 +29,8 @@ dependencies:
   # Validación
   email_validator: ^2.1.17
 
-  # HTTP (si necesitamos API externa)
-  http: ^1.1.0
+  # Environment variables
+  flutter_dotenv: ^5.1.0
 
 dev_dependencies:
   flutter_test:

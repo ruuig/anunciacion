@@ -1,5 +1,4 @@
-// Implementación del SectionRepository usando SQLite
-import 'package:sqflite/sqflite.dart';
+// Implementación del SectionRepository usando PostgreSQL
 import '../../domain/entities/entities.dart';
 import '../../domain/repositories/repositories.dart';
 import '../db/database_helper.dart';
@@ -9,71 +8,49 @@ class SectionRepositoryImpl implements SectionRepository {
 
   @override
   Future<Section?> findById(int id) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
-      'secciones',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-
-    if (result.isEmpty) return null;
-    return _mapToSection(result.first);
+    final result = await _dbHelper.findById('secciones', id);
+    if (result == null) return null;
+    return _mapToSection(result);
   }
 
   @override
   Future<List<Section>> findAll() async {
-    final db = await _dbHelper.database;
-    final result = await db.query('secciones');
+    final result = await _dbHelper.findAll('secciones');
     return result.map((row) => _mapToSection(row)).toList();
   }
 
   @override
   Future<Section> save(Section entity) async {
-    final db = await _dbHelper.database;
-
     if (entity.id == 0) {
-      final id = await db.insert('secciones', _mapFromSection(entity));
+      final id = await _dbHelper.insert('secciones', _mapFromSection(entity));
       return entity.copyWith(id: id);
     } else {
-      await db.update(
-        'secciones',
-        _mapFromSection(entity),
-        where: 'id = ?',
-        whereArgs: [entity.id],
-      );
+      await _dbHelper.update('secciones', _mapFromSection(entity), 'id = @id', [entity.id]);
       return entity;
     }
   }
 
   @override
   Future<Section> update(Section entity) async {
-    final db = await _dbHelper.database;
-    await db.update(
-      'secciones',
-      _mapFromSection(entity),
-      where: 'id = ?',
-      whereArgs: [entity.id],
-    );
+    await _dbHelper.update('secciones', _mapFromSection(entity), 'id = @id', [entity.id]);
     return entity;
   }
 
   @override
   Future<void> delete(int id) async {
-    final db = await _dbHelper.database;
-    await db.delete('secciones', where: 'id = ?', whereArgs: [id]);
+    await _dbHelper.delete('secciones', 'id = @id', [id]);
   }
 
   @override
   Future<bool> existsById(int id) async {
-    return await _dbHelper.exists('secciones', 'id = ?', [id]);
+    return await _dbHelper.exists('secciones', 'id = @id', [id]);
   }
 
   @override
   Future<List<Section>> findByGrade(int gradeId) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'secciones',
-      where: 'grado_id = ?',
+      where: 'grado_id = @grado_id',
       whereArgs: [gradeId],
     );
     return result.map((row) => _mapToSection(row)).toList();
@@ -81,10 +58,9 @@ class SectionRepositoryImpl implements SectionRepository {
 
   @override
   Future<Section?> findByGradeAndName(int gradeId, String name) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'secciones',
-      where: 'grado_id = ? AND nombre = ?',
+      where: 'grado_id = @grado_id AND nombre = @nombre',
       whereArgs: [gradeId, name],
     );
 
@@ -94,11 +70,10 @@ class SectionRepositoryImpl implements SectionRepository {
 
   @override
   Future<List<Section>> findActiveSections() async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'secciones',
-      where: 'activo = ?',
-      whereArgs: [1],
+      where: 'activo = @activo',
+      whereArgs: [true],
     );
     return result.map((row) => _mapToSection(row)).toList();
   }
@@ -111,7 +86,7 @@ class SectionRepositoryImpl implements SectionRepository {
       name: row['nombre'],
       capacity: row['capacidad'],
       studentCount: row['cantidad_estudiantes'],
-      active: row['activo'] == 1,
+      active: row['activo'] == true,
       createdAt: DateTime.parse(row['fecha_creacion']),
     );
   }
@@ -124,7 +99,7 @@ class SectionRepositoryImpl implements SectionRepository {
       'nombre': section.name,
       'capacidad': section.capacity,
       'cantidad_estudiantes': section.studentCount,
-      'activo': section.active ? 1 : 0,
+      'activo': section.active,
       'fecha_creacion': section.createdAt.toIso8601String(),
     };
   }

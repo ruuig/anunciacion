@@ -1,12 +1,13 @@
 import 'package:postgres/postgres.dart' as postgres;
 
 class DatabaseConfig {
-  // Hardcoded Clever Cloud PostgreSQL credentials
-  static const String _host = 'bbisaulqlodvucjcmkwk-postgresql.services.clever-cloud.com';
+  // TODO: Replace with your actual Clever Cloud PostgreSQL credentials
+  // You can find these in your Clever Cloud dashboard
+  static const String _host = 'YOUR_CLEVER_CLOUD_HOST';
   static const int _port = 5432;
-  static const String _databaseName = 'bbisaulqlodvucjcmkwk';
-  static const String _username = 'upaubg9taprssjvha045';
-  static const String _password = 'aiEBEE3HvJA8zjmlmnMQ1BFK9F1cHr';
+  static const String _databaseName = 'YOUR_DATABASE_NAME';
+  static const String _username = 'YOUR_USERNAME';
+  static const String _password = 'YOUR_PASSWORD';
   static const postgres.SslMode _sslMode = postgres.SslMode.require;
 
   DatabaseConfig._privateConstructor();
@@ -21,7 +22,7 @@ class DatabaseConfig {
 
   Future<postgres.Connection> _initDatabase() async {
     try {
-      print('🔗 Conectando a Clever Cloud PostgreSQL...');
+      print('🔗 Conectando a PostgreSQL...');
       print('   Host: $_host:$_port');
       print('   Database: $_databaseName');
       print('   SSL: $_sslMode');
@@ -37,13 +38,13 @@ class DatabaseConfig {
         settings: postgres.ConnectionSettings(sslMode: _sslMode),
       );
 
-      print('✅ Conexión exitosa a Clever Cloud!');
-      print('   Base de datos existente lista para usar');
+      print('✅ Conexión exitosa!');
+      print('   Base de datos lista para usar');
 
       return connection;
     } catch (e) {
       print('❌ Error de conexión: $e');
-      print('   Verifica que las credenciales sean correctas');
+      print('   Reemplaza las credenciales con las de tu base de datos');
       rethrow;
     }
   }

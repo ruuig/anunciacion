@@ -1,4 +1,4 @@
-// Implementación del RoleRepository usando SQLite
+// Implementación del RoleRepository usando PostgreSQL
 import '../../domain/entities/entities.dart';
 import '../../domain/repositories/repositories.dart';
 import '../db/database_helper.dart';
@@ -30,7 +30,7 @@ class RoleRepositoryImpl implements RoleRepository {
       await _dbHelper.update(
         'roles',
         _mapFromRole(entity),
-        'id = ?',
+        'id = @id',
         [entity.id],
       );
       return entity;
@@ -42,7 +42,7 @@ class RoleRepositoryImpl implements RoleRepository {
     await _dbHelper.update(
       'roles',
       _mapFromRole(entity),
-      'id = ?',
+      'id = @id',
       [entity.id],
     );
     return entity;
@@ -50,19 +50,19 @@ class RoleRepositoryImpl implements RoleRepository {
 
   @override
   Future<void> delete(int id) async {
-    await _dbHelper.delete('roles', 'id = ?', [id]);
+    await _dbHelper.delete('roles', 'id = @id', [id]);
   }
 
   @override
   Future<bool> existsById(int id) async {
-    return await _dbHelper.exists('roles', 'id = ?', [id]);
+    return await _dbHelper.exists('roles', 'id = @id', [id]);
   }
 
   @override
   Future<Role?> findByName(String name) async {
     final results = await _dbHelper.query(
       'roles',
-      where: 'nombre = ?',
+      where: 'nombre = @nombre',
       whereArgs: [name],
     );
 
@@ -74,7 +74,7 @@ class RoleRepositoryImpl implements RoleRepository {
   Future<List<Role>> findByLevel(int level) async {
     final results = await _dbHelper.query(
       'roles',
-      where: 'nivel = ?',
+      where: 'nivel = @nivel',
       whereArgs: [level],
     );
 
@@ -83,7 +83,7 @@ class RoleRepositoryImpl implements RoleRepository {
 
   @override
   Future<bool> existsByName(String name) async {
-    return await _dbHelper.exists('roles', 'nombre = ?', [name]);
+    return await _dbHelper.exists('roles', 'nombre = @nombre', [name]);
   }
 
   // Método helper para convertir de Map a Role

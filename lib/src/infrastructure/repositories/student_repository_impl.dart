@@ -1,8 +1,12 @@
-// Implementación del StudentRepository usando SQLite
-import 'package:sqflite/sqflite.dart';
+// Implementación del StudentRepository usando PostgreSQL
 import '../../domain/entities/entities.dart';
 import '../../domain/repositories/repositories.dart';
-import '../../domain/value_objects/value_objects.dart';
+import '../../domain/value_objects/dpi.dart';
+import '../../domain/value_objects/gender.dart';
+import '../../domain/value_objects/address.dart';
+import '../../domain/value_objects/phone.dart';
+import '../../domain/value_objects/email.dart';
+import '../../domain/value_objects/user_status.dart';
 import '../db/database_helper.dart';
 
 class StudentRepositoryImpl implements StudentRepository {
@@ -10,71 +14,49 @@ class StudentRepositoryImpl implements StudentRepository {
 
   @override
   Future<Student?> findById(int id) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
-      'estudiantes',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-
-    if (result.isEmpty) return null;
-    return _mapToStudent(result.first);
+    final result = await _dbHelper.findById('estudiantes', id);
+    if (result == null) return null;
+    return _mapToStudent(result);
   }
 
   @override
   Future<List<Student>> findAll() async {
-    final db = await _dbHelper.database;
-    final result = await db.query('estudiantes');
+    final result = await _dbHelper.findAll('estudiantes');
     return result.map((row) => _mapToStudent(row)).toList();
   }
 
   @override
   Future<Student> save(Student entity) async {
-    final db = await _dbHelper.database;
-
     if (entity.id == 0) {
-      final id = await db.insert('estudiantes', _mapFromStudent(entity));
+      final id = await _dbHelper.insert('estudiantes', _mapFromStudent(entity));
       return entity.copyWith(id: id);
     } else {
-      await db.update(
-        'estudiantes',
-        _mapFromStudent(entity),
-        where: 'id = ?',
-        whereArgs: [entity.id],
-      );
+      await _dbHelper.update('estudiantes', _mapFromStudent(entity), 'id = @id', [entity.id]);
       return entity;
     }
   }
 
   @override
   Future<Student> update(Student entity) async {
-    final db = await _dbHelper.database;
-    await db.update(
-      'estudiantes',
-      _mapFromStudent(entity),
-      where: 'id = ?',
-      whereArgs: [entity.id],
-    );
+    await _dbHelper.update('estudiantes', _mapFromStudent(entity), 'id = @id', [entity.id]);
     return entity;
   }
 
   @override
   Future<void> delete(int id) async {
-    final db = await _dbHelper.database;
-    await db.delete('estudiantes', where: 'id = ?', whereArgs: [id]);
+    await _dbHelper.delete('estudiantes', 'id = @id', [id]);
   }
 
   @override
   Future<bool> existsById(int id) async {
-    return await _dbHelper.exists('estudiantes', 'id = ?', [id]);
+    return await _dbHelper.exists('estudiantes', 'id = @id', [id]);
   }
 
   @override
   Future<Student?> findByDPI(DPI dpi) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'estudiantes',
-      where: 'dpi = ?',
+      where: 'dpi = @dpi',
       whereArgs: [dpi.value],
     );
 
@@ -84,10 +66,9 @@ class StudentRepositoryImpl implements StudentRepository {
 
   @override
   Future<List<Student>> findByGrade(int gradeId) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'estudiantes',
-      where: 'grado_id = ?',
+      where: 'grado_id = @grade_id',
       whereArgs: [gradeId],
     );
     return result.map((row) => _mapToStudent(row)).toList();
@@ -95,10 +76,9 @@ class StudentRepositoryImpl implements StudentRepository {
 
   @override
   Future<List<Student>> findBySection(int sectionId) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'estudiantes',
-      where: 'seccion_id = ?',
+      where: 'seccion_id = @section_id',
       whereArgs: [sectionId],
     );
     return result.map((row) => _mapToStudent(row)).toList();
@@ -106,21 +86,19 @@ class StudentRepositoryImpl implements StudentRepository {
 
   @override
   Future<List<Student>> findByParent(int parentId) async {
-    final db = await _dbHelper.database;
-    final result = await db.rawQuery('''
-      SELECT e.* FROM estudiantes e
-      INNER JOIN estudiantes_padres ep ON e.id = ep.estudiante_id
-      WHERE ep.padre_id = ?
-    ''', [parentId]);
+    final result = await _dbHelper.query('''
+      SELECT e.* FROM escuela.estudiantes e
+      INNER JOIN escuela.estudiantes_padres ep ON e.id = ep.estudiante_id
+      WHERE ep.padre_id = @parent_id
+    ''', whereArgs: [parentId]);
     return result.map((row) => _mapToStudent(row)).toList();
   }
 
   @override
   Future<List<Student>> findActiveStudents() async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'estudiantes',
-      where: 'estado = ?',
+      where: 'estado = @estado',
       whereArgs: ['activo'],
     );
     return result.map((row) => _mapToStudent(row)).toList();
@@ -128,7 +106,7 @@ class StudentRepositoryImpl implements StudentRepository {
 
   @override
   Future<bool> existsByDPI(DPI dpi) async {
-    return await _dbHelper.exists('estudiantes', 'dpi = ?', [dpi.value]);
+    return await _dbHelper.exists('estudiantes', 'dpi = @dpi', [dpi.value]);
   }
 
   // Método helper para convertir de Map a Student
@@ -140,7 +118,7 @@ class StudentRepositoryImpl implements StudentRepository {
       birthDate: DateTime.parse(row['fecha_nacimiento']),
       gender: row['genero'] != null ? Gender.fromString(row['genero']) : null,
       address: row['direccion'] != null ? Address.fromString(row['direccion']) : null,
-      phone: row['telefono'] != null ? Phone.fromString(row['telefono']) : null,
+      phone: row['telefono'] != null ? Phone(row['telefono']) : null,
       email: row['email'] != null ? Email.fromString(row['email']) : null,
       avatarUrl: row['url_avatar'],
       gradeId: row['grado_id'],

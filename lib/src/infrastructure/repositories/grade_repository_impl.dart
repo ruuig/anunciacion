@@ -1,5 +1,4 @@
-// Implementación del GradeRepository usando SQLite
-import 'package:sqflite/sqflite.dart';
+// Implementación del GradeRepository usando PostgreSQL
 import '../../domain/entities/entities.dart';
 import '../../domain/repositories/repositories.dart';
 import '../db/database_helper.dart';
@@ -9,71 +8,49 @@ class GradeRepositoryImpl implements GradeRepository {
 
   @override
   Future<Grade?> findById(int id) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
-      'grados',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
-
-    if (result.isEmpty) return null;
-    return _mapToGrade(result.first);
+    final result = await _dbHelper.findById('grados', id);
+    if (result == null) return null;
+    return _mapToGrade(result);
   }
 
   @override
   Future<List<Grade>> findAll() async {
-    final db = await _dbHelper.database;
-    final result = await db.query('grados');
+    final result = await _dbHelper.findAll('grados');
     return result.map((row) => _mapToGrade(row)).toList();
   }
 
   @override
   Future<Grade> save(Grade entity) async {
-    final db = await _dbHelper.database;
-
     if (entity.id == 0) {
-      final id = await db.insert('grados', _mapFromGrade(entity));
+      final id = await _dbHelper.insert('grados', _mapFromGrade(entity));
       return entity.copyWith(id: id);
     } else {
-      await db.update(
-        'grados',
-        _mapFromGrade(entity),
-        where: 'id = ?',
-        whereArgs: [entity.id],
-      );
+      await _dbHelper.update('grados', _mapFromGrade(entity), 'id = @id', [entity.id]);
       return entity;
     }
   }
 
   @override
   Future<Grade> update(Grade entity) async {
-    final db = await _dbHelper.database;
-    await db.update(
-      'grados',
-      _mapFromGrade(entity),
-      where: 'id = ?',
-      whereArgs: [entity.id],
-    );
+    await _dbHelper.update('grados', _mapFromGrade(entity), 'id = @id', [entity.id]);
     return entity;
   }
 
   @override
   Future<void> delete(int id) async {
-    final db = await _dbHelper.database;
-    await db.delete('grados', where: 'id = ?', whereArgs: [id]);
+    await _dbHelper.delete('grados', 'id = @id', [id]);
   }
 
   @override
   Future<bool> existsById(int id) async {
-    return await _dbHelper.exists('grados', 'id = ?', [id]);
+    return await _dbHelper.exists('grados', 'id = @id', [id]);
   }
 
   @override
   Future<List<Grade>> findByEducationalLevel(int educationalLevelId) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'grados',
-      where: 'nivel_educativo_id = ?',
+      where: 'nivel_educativo_id = @nivel_educativo_id',
       whereArgs: [educationalLevelId],
     );
     return result.map((row) => _mapToGrade(row)).toList();
@@ -81,10 +58,9 @@ class GradeRepositoryImpl implements GradeRepository {
 
   @override
   Future<List<Grade>> findByAcademicYear(String academicYear) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'grados',
-      where: 'ano_academico = ?',
+      where: 'ano_academico = @ano_academico',
       whereArgs: [academicYear],
     );
     return result.map((row) => _mapToGrade(row)).toList();
@@ -92,10 +68,9 @@ class GradeRepositoryImpl implements GradeRepository {
 
   @override
   Future<Grade?> findByNameAndYear(String name, String academicYear) async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'grados',
-      where: 'nombre = ? AND ano_academico = ?',
+      where: 'nombre = @nombre AND ano_academico = @ano_academico',
       whereArgs: [name, academicYear],
     );
 
@@ -105,11 +80,10 @@ class GradeRepositoryImpl implements GradeRepository {
 
   @override
   Future<List<Grade>> findActiveGrades() async {
-    final db = await _dbHelper.database;
-    final result = await db.query(
+    final result = await _dbHelper.query(
       'grados',
-      where: 'activo = ?',
-      whereArgs: [1],
+      where: 'activo = @activo',
+      whereArgs: [true],
     );
     return result.map((row) => _mapToGrade(row)).toList();
   }
@@ -122,7 +96,7 @@ class GradeRepositoryImpl implements GradeRepository {
       educationalLevelId: row['nivel_educativo_id'],
       ageRange: row['rango_edad'],
       academicYear: row['ano_academico'],
-      active: row['activo'] == 1,
+      active: row['activo'] == true,
       createdAt: DateTime.parse(row['fecha_creacion']),
       updatedAt: DateTime.parse(row['fecha_actualizacion']),
     );
@@ -136,7 +110,7 @@ class GradeRepositoryImpl implements GradeRepository {
       'nivel_educativo_id': grade.educationalLevelId,
       'rango_edad': grade.ageRange,
       'ano_academico': grade.academicYear,
-      'activo': grade.active ? 1 : 0,
+      'activo': grade.active,
       'fecha_creacion': grade.createdAt.toIso8601String(),
       'fecha_actualizacion': grade.updatedAt.toIso8601String(),
     };
