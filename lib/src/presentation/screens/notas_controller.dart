@@ -94,17 +94,22 @@ class NotasController extends StateNotifier<NotasState> {
         periodId: state.periodId!,
       );
 
-      final average = entries.isEmpty
-          ? 0.0
-          : entries
-                  .where((e) => e.value != null)
-                  .map((e) => e.value!)
-                  .reduce((a, b) => a + b) /
-              entries.where((e) => e.value != null).length;
+      final validEntries = entries
+          .where((entry) => entry.value != null)
+          .map((entry) => entry.value!)
+          .toList();
+
+      final double average;
+      if (validEntries.isEmpty) {
+        average = 0.0;
+      } else {
+        final total = validEntries.reduce((a, b) => a + b);
+        average = total / validEntries.length;
+      }
 
       state = state.copyWith(
         entries: entries,
-        average: average.isNaN ? 0.0 : average,
+        average: average,
         loading: false,
       );
     } catch (e) {
