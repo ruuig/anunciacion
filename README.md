@@ -64,12 +64,53 @@ lib/
 - ✅ Manejo seguro de credenciales
 - ✅ Sin dependencias externas de configuración
 
-## 📝 Notas
+## 🚨 Solución de Problemas
 
-- **No se ejecuta SQL automáticamente**
-- **Base de datos existente se respeta**
-- **Solo verificación de conectividad**
-- **Schema public por defecto** (sin prefijo necesario)
-- **Credenciales hardcodeadas para desarrollo**
+### Error "Too Many Connections" (53300)
 
-¡Listo para usar! 🎉
+Si recibes el error **53300: too many connections for role**:
+
+1. **Ejecuta el limpiador de emergencia**:
+```bash
+dart run emergency_clean.dart
+```
+
+2. **O usa el limpiador de conexiones**:
+```bash
+dart run force_clean_connections.dart
+```
+
+3. **Si persiste, espera y reinicia**:
+   - Espera 2-3 minutos para que se liberen conexiones
+   - Reinicia completamente Flutter
+   - Verifica en el panel de Clever Cloud
+
+4. **Scripts disponibles**:
+   - `emergency_clean.dart` - Limpieza agresiva automática
+   - `force_clean_connections.dart` - Múltiples intentos con espera
+   - `test_login.dart` - Verificación específica del login
+
+### Scripts de Diagnóstico
+
+```bash
+# Verificar login
+dart run test_login.dart
+
+# Probar conexión
+dart run test_db_config.dart
+
+# Limpiar conexiones
+dart run clean_connections.dart
+
+# Emergencia (más agresivo)
+dart run emergency_clean.dart
+```
+
+### Credenciales de Base de Datos
+
+- **Host**: bbisaulqlodvucjcmkwk-postgresql.services.clever-cloud.com
+- **Database**: bbisaulqlodvucjcmkwk
+- **User**: upaubg9taprssjvha045
+- **SSL**: require
+
+*Nota: Las credenciales están hardcodeadas en el código para desarrollo rápido*

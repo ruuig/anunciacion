@@ -81,14 +81,35 @@ class SectionRepositoryImpl implements SectionRepository {
   // Método helper para convertir de Map a Section
   Section _mapToSection(Map<String, dynamic> row) {
     return Section(
-      id: row['id'],
-      gradeId: row['grado_id'],
-      name: row['nombre'],
+      id: row['id'] ?? 0,
+      gradeId: row['grado_id'] ?? 1,
+      name: row['nombre'] ?? '',
       capacity: row['capacidad'],
-      studentCount: row['cantidad_estudiantes'],
+      studentCount: row['cantidad_estudiantes'] ?? 0,
       active: row['activo'] == true,
-      createdAt: DateTime.parse(row['fecha_creacion']),
+      createdAt: _parseDateTime(row['fecha_creacion']) ?? DateTime.now(),
     );
+  }
+
+  // Helper method to parse DateTime from database (handles both DateTime objects and strings)
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+
+    if (value is DateTime) {
+      return value; // Already a DateTime object
+    }
+
+    if (value is String) {
+      try {
+        return DateTime.parse(value); // Parse string to DateTime
+      } catch (e) {
+        print('Error parsing date string: $value - $e');
+        return null;
+      }
+    }
+
+    print('Unknown date type: ${value.runtimeType}');
+    return null;
   }
 
   // Método helper para convertir de Section a Map

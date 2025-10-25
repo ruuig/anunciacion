@@ -15,7 +15,19 @@ class DatabaseConfig {
   static postgres.Connection? _connection;
 
   Future<postgres.Connection> get database async {
-    _connection ??= await _initDatabase();
+    // Si ya hay una conexión, verificar si sigue activa con más frecuencia
+    if (_connection != null) {
+      try {
+        // Verificar si la conexión sigue activa con un timeout corto
+        await _connection!.execute('SELECT 1').timeout(Duration(seconds: 5));
+        return _connection!;
+      } catch (e) {
+        print('Conexión anterior no válida (${e.toString().substring(0, 50)}...), creando nueva...');
+        await _closeConnection();
+      }
+    }
+
+    _connection = await _initDatabase();
     return _connection!;
   }
 
@@ -34,7 +46,11 @@ class DatabaseConfig {
           username: _username,
           password: _password,
         ),
-        settings: postgres.ConnectionSettings(sslMode: _sslMode),
+        settings: postgres.ConnectionSettings(
+          sslMode: _sslMode,
+          connectTimeout: const Duration(seconds: 30),
+          queryTimeout: const Duration(seconds: 30),
+        ),
       );
 
       print('✅ Conexión exitosa a Clever Cloud!');
@@ -43,7 +59,14 @@ class DatabaseConfig {
       return connection;
     } catch (e) {
       print('❌ Error de conexión: $e');
-      print('   Verifica que las credenciales sean correctas');
+      if (e.toString().contains('53300') || e.toString().contains('too many connections')) {
+        print('💡 LÍMITE DE CONEXIONES ALCANZADO EN CLEVER CLOUD');
+        print('   🔄 Intentando reconectar en 10 segundos...');
+        await Future.delayed(Duration(seconds: 10));
+        return await _initDatabase(); // Retry automático
+      } else {
+        print('   Verifica que las credenciales sean correctas');
+      }
       rethrow;
     }
   }
@@ -51,20 +74,51 @@ class DatabaseConfig {
   // Simple connection test - only checks if connection can be established
   Future<bool> testConnection() async {
     try {
-      // Just try to open connection without executing any SQL
+      // Forzar cierre de cualquier conexión existente
+      await _closeConnection();
+
+      // Esperar un poco para que se libere la conexión
+      await Future.delayed(Duration(seconds: 2));
+
+      // Intentar nueva conexión
       final connection = await _initDatabase();
+
+      // Verificar que funciona con una consulta simple
+      await connection.execute('SELECT 1');
+
       await connection.close();
+      // Reset connection para evitar reutilizar
+      _connection = null;
       return true;
     } catch (e) {
       print('Connection test failed: $e');
+      if (e.toString().contains('53300') || e.toString().contains('too many connections')) {
+        print('   💡 Ejecuta: dart run force_clean_connections.dart');
+      }
       return false;
     }
   }
 
-  Future<void> close() async {
+  Future<void> _closeConnection() async {
     if (_connection != null) {
-      await _connection!.close();
-      _connection = null;
+      try {
+        await _connection!.close();
+        print('🔌 Conexión cerrada correctamente');
+      } catch (e) {
+        print('Error cerrando conexión: $e');
+      } finally {
+        _connection = null;
+      }
     }
+  }
+
+  Future<void> close() async {
+    await _closeConnection();
+  }
+
+  // Método para forzar limpieza de conexiones
+  Future<void> resetConnection() async {
+    print('🔄 Reiniciando conexión...');
+    await _closeConnection();
   }
 }

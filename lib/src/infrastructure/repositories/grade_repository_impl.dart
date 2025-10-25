@@ -91,15 +91,36 @@ class GradeRepositoryImpl implements GradeRepository {
   // Método helper para convertir de Map a Grade
   Grade _mapToGrade(Map<String, dynamic> row) {
     return Grade(
-      id: row['id'],
-      name: row['nombre'],
-      educationalLevelId: row['nivel_educativo_id'],
+      id: row['id'] ?? 0,
+      name: row['nombre'] ?? '',
+      educationalLevelId: row['nivel_educativo_id'] ?? 1,
       ageRange: row['rango_edad'],
-      academicYear: row['ano_academico'],
+      academicYear: row['ano_academico'] ?? '',
       active: row['activo'] == true,
-      createdAt: DateTime.parse(row['fecha_creacion']),
-      updatedAt: DateTime.parse(row['fecha_actualizacion']),
+      createdAt: _parseDateTime(row['fecha_creacion']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(row['fecha_actualizacion']) ?? DateTime.now(),
     );
+  }
+
+  // Helper method to parse DateTime from database (handles both DateTime objects and strings)
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+
+    if (value is DateTime) {
+      return value; // Already a DateTime object
+    }
+
+    if (value is String) {
+      try {
+        return DateTime.parse(value); // Parse string to DateTime
+      } catch (e) {
+        print('Error parsing date string: $value - $e');
+        return null;
+      }
+    }
+
+    print('Unknown date type: ${value.runtimeType}');
+    return null;
   }
 
   // Método helper para convertir de Grade a Map

@@ -1,5 +1,4 @@
 import 'package:anunciacion/src/infrastructure/db/database_config.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   print('🔍 VERIFICACIÓN DIRECTA DE DATABASE CONFIG');
@@ -30,8 +29,7 @@ void main() async {
     // Verificar schemas
     print('\n📂 SCHEMAS DISPONIBLES:');
     final schemasResult = await connection.execute(
-      'SELECT schema_name FROM information_schema.schemata ORDER BY schema_name;'
-    );
+        'SELECT schema_name FROM information_schema.schemata ORDER BY schema_name;');
 
     for (final row in schemasResult) {
       print('   - ${row.first}');
@@ -45,8 +43,7 @@ void main() async {
     // Verificar schema escuela
     print('\n🏫 VERIFICACIÓN SCHEMA ESCUELA:');
     final escuelaResult = await connection.execute(
-      "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = 'escuela')"
-    );
+        "SELECT EXISTS(SELECT 1 FROM information_schema.schemata WHERE schema_name = 'escuela')");
     final escuelaExists = escuelaResult.first.first as bool;
     print('   Schema "escuela" existe: $escuelaExists');
 
@@ -54,8 +51,7 @@ void main() async {
       // Verificar tablas en schema escuela
       print('\n📊 TABLAS EN SCHEMA ESCUELA:');
       final tablesResult = await connection.execute(
-        "SELECT table_name FROM information_schema.tables WHERE table_schema = 'escuela' ORDER BY table_name"
-      );
+          "SELECT table_name FROM information_schema.tables WHERE table_schema = 'escuela' ORDER BY table_name");
 
       if (tablesResult.isEmpty) {
         print('   No hay tablas en schema escuela');
@@ -75,7 +71,6 @@ void main() async {
     print('   ✅ Conexión a Clever Cloud funcionando');
     print('   ✅ Schema configurado correctamente');
     print('   ✅ Variables de entorno cargadas');
-
   } catch (e) {
     print('\n❌ ERROR EN DATABASE CONFIG:');
     print('   Error: $e');
@@ -84,7 +79,8 @@ void main() async {
       print('\n💡 SOLUCIÓN: Verifica las credenciales en .env');
       print('   - Usuario y contraseña correctos');
       print('   - Base de datos existe y está activa');
-    } else if (e.toString().contains('Connection refused') || e.toString().contains('No such host')) {
+    } else if (e.toString().contains('Connection refused') ||
+        e.toString().contains('No such host')) {
       print('\n💡 SOLUCIÓN: Verifica la configuración de red');
       print('   - DB_HOST correcto (URL de Clever Cloud)');
       print('   - DB_PORT correcto (5432)');
@@ -96,8 +92,5 @@ void main() async {
     }
 
     print('\n🔧 Variables de entorno actuales:');
-    print('   DB_HOST: ${dotenv.env['DB_HOST'] ?? 'NO DEFINIDO'}');
-    print('   DB_USER: ${dotenv.env['DB_USER'] ?? 'NO DEFINIDO'}');
-    print('   DB_NAME: ${dotenv.env['DB_NAME'] ?? 'NO DEFINIDO'}');
   }
 }

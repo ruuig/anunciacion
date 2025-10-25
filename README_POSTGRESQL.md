@@ -64,7 +64,7 @@ flutter run -d windows
 
 ## 📋 Notas Importantes
 
-1. **Esquema:** Todas las tablas están organizadas bajo el esquema `escuela`
+1. **Esquema:** Todas las tablas están organizadas bajo el esquema `public`
 2. **Autenticación:** La aplicación usa hash de contraseñas (SHA-256 con salt)
 3. **Validaciones:** Incluye validaciones para números de teléfono guatemaltecos
 4. **Relaciones:** Todas las foreign keys están correctamente configuradas

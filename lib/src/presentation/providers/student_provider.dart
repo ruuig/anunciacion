@@ -1,9 +1,9 @@
 // Provider para gestión de estado de estudiantes
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:anunciacion/src/domain/entities/entities.dart';
-import 'package:anunciacion/src/domain/value_objects/value_objects.dart';
-import 'package:anunciacion/src/application/use_cases/use_cases.dart';
-import 'package:anunciacion/src/infrastructure/repositories/repositories_impl.dart';
+import '../../domain/entities/entities.dart';
+import '../../domain/value_objects/value_objects.dart';
+import '../../application/use_cases/use_cases.dart';
+import '../../infrastructure/repositories/repositories_impl.dart';
 
 // Estado de estudiantes
 class StudentState {

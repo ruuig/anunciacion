@@ -30,32 +30,34 @@ class UserRepositoryImpl implements UserRepository {
       return entity.copyWith(id: id);
     } else {
       // Actualizar usuario existente
-      await _dbHelper.update('usuarios', _mapFromUser(entity), 'id = @id', [entity.id]);
+      await _dbHelper
+          .update('usuarios', _mapFromUser(entity), 'id = @param_0', [entity.id]);
       return entity;
     }
   }
 
   @override
   Future<User> update(User entity) async {
-    await _dbHelper.update('usuarios', _mapFromUser(entity), 'id = @id', [entity.id]);
+    await _dbHelper
+        .update('usuarios', _mapFromUser(entity), 'id = @param_0', [entity.id]);
     return entity;
   }
 
   @override
   Future<void> delete(int id) async {
-    await _dbHelper.delete('usuarios', 'id = @id', [id]);
+    await _dbHelper.delete('usuarios', 'id = @param_0', [id]);
   }
 
   @override
   Future<bool> existsById(int id) async {
-    return await _dbHelper.exists('usuarios', 'id = @id', [id]);
+    return await _dbHelper.exists('usuarios', 'id = @param_0', [id]);
   }
 
   @override
   Future<User?> findByUsername(String username) async {
     final result = await _dbHelper.query(
       'usuarios',
-      where: 'username = @username',
+      where: 'username = @param_0',
       whereArgs: [username],
     );
 
@@ -67,7 +69,7 @@ class UserRepositoryImpl implements UserRepository {
   Future<User?> findByEmail(String email) async {
     final result = await _dbHelper.query(
       'usuarios',
-      where: 'email = @email',
+      where: 'email = @param_0',
       whereArgs: [email],
     );
 
@@ -79,7 +81,7 @@ class UserRepositoryImpl implements UserRepository {
   Future<List<User>> findByRole(int roleId) async {
     final result = await _dbHelper.query(
       'usuarios',
-      where: 'rol_id = @role_id',
+      where: 'rol_id = @param_0',
       whereArgs: [roleId],
     );
 
@@ -90,7 +92,7 @@ class UserRepositoryImpl implements UserRepository {
   Future<List<User>> findActiveUsers() async {
     final result = await _dbHelper.query(
       'usuarios',
-      where: 'estado = @estado',
+      where: 'estado = @param_0',
       whereArgs: ['activo'],
     );
 
@@ -99,7 +101,15 @@ class UserRepositoryImpl implements UserRepository {
 
   @override
   Future<bool> existsByUsername(String username) async {
-    return await _dbHelper.exists('usuarios', 'username = @username', [username]);
+    return await _dbHelper
+        .exists('usuarios', 'username = @param_0', [username]);
+  }
+
+  @override
+  Future<User?> authenticate(String username, String password) async {
+    final result = await _dbHelper.authenticateUser(username, password);
+    if (result == null) return null;
+    return _mapToUser(result);
   }
 
   @override
@@ -107,7 +117,7 @@ class UserRepositoryImpl implements UserRepository {
     await _dbHelper.update(
       'usuarios',
       {'ultimo_acceso': DateTime.now().toIso8601String()},
-      'id = @id',
+      'id = @param_0',
       [userId],
     );
   }
@@ -115,20 +125,39 @@ class UserRepositoryImpl implements UserRepository {
   // Método helper para convertir de Map a User
   User _mapToUser(Map<String, dynamic> row) {
     return User(
-      id: row['id'],
-      name: row['nombre'],
-      username: row['username'],
-      passwordHash: Password(row['password_hash']),
+      id: row['id'] ?? 0, // Default to 0 if null
+      name: row['nombre'] ?? '', // Default to empty string if null
+      username: row['username'] ?? '', // Default to empty string if null
+      passwordHash: Password.fromPlainText(row['password'] as String), // Convertir texto plano a hash
       phone: row['telefono'] != null ? Phone(row['telefono']) : null,
-      roleId: row['rol_id'],
-      status: UserStatus.fromString(row['estado']),
+      roleId: row['rol_id'] ?? 1, // Default to role 1 if null
+      status: UserStatus.fromString(row['estado'] ?? 'activo'), // Default to 'activo' if null
       avatarUrl: row['url_avatar'],
-      lastAccess: row['ultimo_acceso'] != null
-          ? DateTime.parse(row['ultimo_acceso'])
-          : null,
-      createdAt: DateTime.parse(row['fecha_creacion']),
-      updatedAt: DateTime.parse(row['fecha_actualizacion']),
+      lastAccess: _parseDateTime(row['ultimo_acceso']),
+      createdAt: _parseDateTime(row['fecha_creacion']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(row['fecha_actualizacion']) ?? DateTime.now(),
     );
+  }
+
+  // Helper method to parse DateTime from database (handles both DateTime objects and strings)
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+
+    if (value is DateTime) {
+      return value; // Already a DateTime object
+    }
+
+    if (value is String) {
+      try {
+        return DateTime.parse(value); // Parse string to DateTime
+      } catch (e) {
+        print('Error parsing date string: $value - $e');
+        return null;
+      }
+    }
+
+    print('Unknown date type: ${value.runtimeType}');
+    return null;
   }
 
   // Método helper para convertir de User a Map
@@ -137,7 +166,7 @@ class UserRepositoryImpl implements UserRepository {
       'id': user.id,
       'nombre': user.name,
       'username': user.username,
-      'password_hash': user.passwordHash.hash,
+      'password': user.passwordHash.hash, // Guardar el hash como texto (la BD espera texto plano)
       'telefono': user.phone?.value,
       'rol_id': user.roleId,
       'estado': user.status.toString(),

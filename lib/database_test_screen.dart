@@ -38,14 +38,19 @@ class _DatabaseConnectionTestState extends State<DatabaseConnectionTest> {
       _addLog('   SSL Mode: require');
       _addLog('   Schema: public (por defecto)');
 
-      // Probar conexión básica usando DatabaseConfig
-      _addLog('\n2. Probando conexión básica con DatabaseConfig...');
+      // Limpiar conexiones existentes primero
+      _addLog('\n2. Limpiando conexiones existentes...');
       final dbConfig = DatabaseConfig.instance;
+      await dbConfig.resetConnection();
+      _addLog('   ✅ Conexiones reiniciadas');
+
+      // Probar conexión básica usando DatabaseConfig
+      _addLog('\n3. Probando conexión básica con DatabaseConfig...');
       final connectionTest = await dbConfig.testConnection();
 
       if (connectionTest) {
         _addLog('✅ CONEXIÓN EXITOSA A CLEVER CLOUD!');
-        _addLog('\n3. Verificación completada:');
+        _addLog('\n4. Verificación completada:');
         _addLog('   - Credenciales válidas');
         _addLog('   - Base de datos accesible');
         _addLog('   - Conexión SSL funcionando');
@@ -67,7 +72,13 @@ class _DatabaseConnectionTestState extends State<DatabaseConnectionTest> {
       _addLog('Error: $e');
       _addLog('StackTrace: $stackTrace');
 
-      if (e.toString().contains('Connection refused')) {
+      if (e.toString().contains('53300') || e.toString().contains('too many connections')) {
+        _addLog('\n💡 LÍMITE DE CONEXIONES ALCANZADO');
+        _addLog('   Soluciones:');
+        _addLog('   - Espera unos minutos para que se liberen conexiones');
+        _addLog('   - Reinicia la aplicación completamente');
+        _addLog('   - Contacta a Clever Cloud si el problema persiste');
+      } else if (e.toString().contains('Connection refused')) {
         _addLog('\n💡 Verifica configuración de red');
       } else if (e.toString().contains('authentication failed')) {
         _addLog('\n💡 Verifica credenciales hardcodeadas');

@@ -31,32 +31,32 @@ class StudentRepositoryImpl implements StudentRepository {
       final id = await _dbHelper.insert('estudiantes', _mapFromStudent(entity));
       return entity.copyWith(id: id);
     } else {
-      await _dbHelper.update('estudiantes', _mapFromStudent(entity), 'id = @id', [entity.id]);
+      await _dbHelper.update('estudiantes', _mapFromStudent(entity), 'id = @param_0', [entity.id]);
       return entity;
     }
   }
 
   @override
   Future<Student> update(Student entity) async {
-    await _dbHelper.update('estudiantes', _mapFromStudent(entity), 'id = @id', [entity.id]);
+    await _dbHelper.update('estudiantes', _mapFromStudent(entity), 'id = @param_0', [entity.id]);
     return entity;
   }
 
   @override
   Future<void> delete(int id) async {
-    await _dbHelper.delete('estudiantes', 'id = @id', [id]);
+    await _dbHelper.delete('estudiantes', 'id = @param_0', [id]);
   }
 
   @override
   Future<bool> existsById(int id) async {
-    return await _dbHelper.exists('estudiantes', 'id = @id', [id]);
+    return await _dbHelper.exists('estudiantes', 'id = @param_0', [id]);
   }
 
   @override
   Future<Student?> findByDPI(DPI dpi) async {
     final result = await _dbHelper.query(
       'estudiantes',
-      where: 'dpi = @dpi',
+      where: 'dpi = @param_0',
       whereArgs: [dpi.value],
     );
 
@@ -68,7 +68,7 @@ class StudentRepositoryImpl implements StudentRepository {
   Future<List<Student>> findByGrade(int gradeId) async {
     final result = await _dbHelper.query(
       'estudiantes',
-      where: 'grado_id = @grade_id',
+      where: 'grado_id = @param_0',
       whereArgs: [gradeId],
     );
     return result.map((row) => _mapToStudent(row)).toList();
@@ -78,7 +78,7 @@ class StudentRepositoryImpl implements StudentRepository {
   Future<List<Student>> findBySection(int sectionId) async {
     final result = await _dbHelper.query(
       'estudiantes',
-      where: 'seccion_id = @section_id',
+      where: 'seccion_id = @param_0',
       whereArgs: [sectionId],
     );
     return result.map((row) => _mapToStudent(row)).toList();
@@ -87,9 +87,9 @@ class StudentRepositoryImpl implements StudentRepository {
   @override
   Future<List<Student>> findByParent(int parentId) async {
     final result = await _dbHelper.query('''
-      SELECT e.* FROM escuela.estudiantes e
-      INNER JOIN escuela.estudiantes_padres ep ON e.id = ep.estudiante_id
-      WHERE ep.padre_id = @parent_id
+      SELECT e.* FROM estudiantes e
+      INNER JOIN estudiantes_padres ep ON e.id = ep.estudiante_id
+      WHERE ep.padre_id = @param_0
     ''', whereArgs: [parentId]);
     return result.map((row) => _mapToStudent(row)).toList();
   }
@@ -98,7 +98,7 @@ class StudentRepositoryImpl implements StudentRepository {
   Future<List<Student>> findActiveStudents() async {
     final result = await _dbHelper.query(
       'estudiantes',
-      where: 'estado = @estado',
+      where: 'estado = @param_0',
       whereArgs: ['activo'],
     );
     return result.map((row) => _mapToStudent(row)).toList();
@@ -106,28 +106,49 @@ class StudentRepositoryImpl implements StudentRepository {
 
   @override
   Future<bool> existsByDPI(DPI dpi) async {
-    return await _dbHelper.exists('estudiantes', 'dpi = @dpi', [dpi.value]);
+    return await _dbHelper.exists('estudiantes', 'dpi = @param_0', [dpi.value]);
   }
 
   // Método helper para convertir de Map a Student
   Student _mapToStudent(Map<String, dynamic> row) {
     return Student(
-      id: row['id'],
-      dpi: DPI(row['dpi']),
-      name: row['nombre'],
-      birthDate: DateTime.parse(row['fecha_nacimiento']),
+      id: row['id'] ?? 0,
+      dpi: DPI(row['dpi'] ?? ''),
+      name: row['nombre'] ?? '',
+      birthDate: _parseDateTime(row['fecha_nacimiento']) ?? DateTime.now(),
       gender: row['genero'] != null ? Gender.fromString(row['genero']) : null,
       address: row['direccion'] != null ? Address.fromString(row['direccion']) : null,
       phone: row['telefono'] != null ? Phone(row['telefono']) : null,
       email: row['email'] != null ? Email.fromString(row['email']) : null,
       avatarUrl: row['url_avatar'],
-      gradeId: row['grado_id'],
-      sectionId: row['seccion_id'],
-      enrollmentDate: DateTime.parse(row['fecha_inscripcion']),
-      status: UserStatus.fromString(row['estado']),
-      createdAt: DateTime.parse(row['fecha_creacion']),
-      updatedAt: DateTime.parse(row['fecha_actualizacion']),
+      gradeId: row['grado_id'] ?? 1,
+      sectionId: row['seccion_id'] ?? 1,
+      enrollmentDate: _parseDateTime(row['fecha_inscripcion']) ?? DateTime.now(),
+      status: UserStatus.fromString(row['estado'] ?? 'activo'),
+      createdAt: _parseDateTime(row['fecha_creacion']) ?? DateTime.now(),
+      updatedAt: _parseDateTime(row['fecha_actualizacion']) ?? DateTime.now(),
     );
+  }
+
+  // Helper method to parse DateTime from database (handles both DateTime objects and strings)
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+
+    if (value is DateTime) {
+      return value; // Already a DateTime object
+    }
+
+    if (value is String) {
+      try {
+        return DateTime.parse(value); // Parse string to DateTime
+      } catch (e) {
+        print('Error parsing date string: $value - $e');
+        return null;
+      }
+    }
+
+    print('Unknown date type: ${value.runtimeType}');
+    return null;
   }
 
   // Método helper para convertir de Student a Map

@@ -9,5 +9,6 @@ abstract class UserRepository implements BaseRepository<User, int> {
   Future<List<User>> findByRole(int roleId);
   Future<List<User>> findActiveUsers();
   Future<bool> existsByUsername(String username);
+  Future<User?> authenticate(String username, String password);
   Future<void> updateLastAccess(int userId);
 }
