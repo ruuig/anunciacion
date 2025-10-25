@@ -1,7 +1,9 @@
 import 'dart:math';
+import 'package:anunciacion/src/presentation/screens/qr_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:anunciacion/src/presentation/widgets/CustomCard.dart';
 import 'package:anunciacion/src/presentation/widgets/bottomBar.dart';
+import 'notas_page.dart';
 
 class HomeLuxuryPage extends StatefulWidget {
   const HomeLuxuryPage({super.key});
@@ -17,7 +19,7 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
 
   @override
   Widget build(BuildContext context) {
-    const expandedHeight = 200.0;
+    const expandedHeight = 180.0;
     const collapsedHeight = 100.0;
 
     return Scaffold(
@@ -67,7 +69,17 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
                     imageUrl: 'assets/notas.png',
                     title: 'Calificaciones',
                     description: 'Consulta y registra notas por curso',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const NotasPage(
+                            userRole: 'Docente',
+                            assignedGrades: ['1ro Primaria', '2do Primaria'],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   CustomCard(
                     imageUrl: 'assets/descarga.png',
@@ -89,9 +101,16 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
                   ),
                   CustomCard(
                     imageUrl: 'assets/asistencia.png',
-                    title: 'Calendario',
-                    description: 'Eventos y recordatorios',
-                    onTap: () {},
+                    title: 'Registro Entrada y Salida',
+                    description: 'Registrar horarios de entrada y salida',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const QrScannerPage(),
+                        ),
+                      );
+                    },
                   ),
                   CustomCard(
                     imageUrl: 'assets/configuracion.png',

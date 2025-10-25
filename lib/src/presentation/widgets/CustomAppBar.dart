@@ -34,9 +34,12 @@ class CustomAppBAr extends StatelessWidget {
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Color(0xFFEA445A),
+                  Color.fromARGB(255, 91, 219, 215),
+                  Color.fromARGB(255, 54, 45, 223),
+                  Color.fromARGB(255, 224, 213, 58)
+                  /*Color(0xFFEA445A),
                   Color(0xFFF37161),
-                  Color(0xFFF9A856)
+                  Color(0xFFF9A856)*/
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,

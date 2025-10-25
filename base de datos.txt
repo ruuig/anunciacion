@@ -239,18 +239,29 @@ CREATE TABLE IF NOT EXISTS asistencias (
     UNIQUE(estudiante_id, fecha)
 );
 
--- Tabla de auditoría
-CREATE TABLE IF NOT EXISTS auditoria (
-    id BIGSERIAL PRIMARY KEY,
-    usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
-    accion VARCHAR(100) NOT NULL,
-    tabla_afectada VARCHAR(100) NOT NULL,
-    registro_id INTEGER,
-    valores_anteriores JSONB,
-    valores_nuevos JSONB,
-    direccion_ip VARCHAR(45),
-    user_agent VARCHAR(500),
-    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Tabla de periodos académicos
+CREATE TABLE IF NOT EXISTS periodos_academicos (
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(50) NOT NULL,
+    ano_academico VARCHAR(9) NOT NULL,
+    fecha_inicio DATE NOT NULL,
+    fecha_fin DATE NOT NULL,
+    orden INTEGER NOT NULL,
+    activo BOOLEAN DEFAULT true,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(nombre, ano_academico)
+);
+
+-- Tabla de calificaciones de estudiantes por materia y período
+CREATE TABLE IF NOT EXISTS student_grades (
+    id SERIAL PRIMARY KEY,
+    student_id INTEGER NOT NULL REFERENCES estudiantes(id) ON DELETE CASCADE,
+    subject_id INTEGER NOT NULL REFERENCES materias(id) ON DELETE CASCADE,
+    period_id INTEGER NOT NULL REFERENCES periodos_academicos(id) ON DELETE CASCADE,
+    value DECIMAL(5,2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(student_id, subject_id, period_id)
 );
 
 
@@ -320,12 +331,11 @@ VALUES
 ('Computación', 'COMP', 'Tecnología e informática')
 ON CONFLICT (nombre) DO NOTHING;
 
--- Conceptos de pago básicos
-INSERT INTO conceptos_pago (nombre, descripcion, monto_por_defecto, tipo)
+-- Periodos académicos básicos
+INSERT INTO periodos_academicos (nombre, ano_academico, fecha_inicio, fecha_fin, orden)
 VALUES
-('Colegiatura Mensual', 'Pago mensual por servicios educativos', 500.00, 'mensual'),
-('Inscripción Anual', 'Pago de inscripción al inicio del año', 200.00, 'anual'),
-('Materiales Escolares', 'Materiales y útiles escolares', 100.00, 'anual'),
-('Eventos Especiales', 'Actividades extracurriculares', NULL, 'opcional'),
-('Seguro Estudiantil', 'Seguro médico estudiantil', 50.00, 'anual')
-ON CONFLICT (nombre) DO NOTHING;
+('Primer Trimestre', '2024', '2024-01-15', '2024-04-15', 1),
+('Segundo Trimestre', '2024', '2024-04-16', '2024-07-15', 2),
+('Tercer Trimestre', '2024', '2024-07-16', '2024-10-15', 3),
+('Cuarto Trimestre', '2024', '2024-10-16', '2024-12-15', 4)
+ON CONFLICT (nombre, ano_academico) DO NOTHING;
