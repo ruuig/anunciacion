@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  google_fonts: ^6.1.0
 
   # Base de datos - PostgreSQL
   postgres: ^3.4.8
@@ -39,3 +40,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/
+    - assets/logoanunciacion.png
