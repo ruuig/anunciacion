@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:anunciacion/src/presentation/screens/StudentsPage.dart';
+import 'package:anunciacion/src/presentation/screens/config_screen.dart';
 import 'package:anunciacion/src/presentation/screens/qr_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:anunciacion/src/presentation/widgets/CustomCard.dart';
@@ -124,7 +125,23 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
                     imageUrl: 'assets/configuracion.png',
                     title: 'Configuración',
                     description: 'Preferencias y usuarios',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AdministrationPage(
+                              user: AdminUser(
+                                  name: 'Admin',
+                                  role: 'Admin',
+                                  permissions: [
+                                'manage_users',
+                                'manage_grades',
+                                'edit_students',
+                                'view_all'
+                              ])),
+                        ),
+                      );
+                    },
                   ),
                 ]),
               ),
