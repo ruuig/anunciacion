@@ -184,6 +184,19 @@ class StudentGradeRepositoryImpl implements StudentGradeRepository {
 
   @override
   Future<void> upsertGradesBatch(List<GradeEntry> entries) async {
+    for (final entry in entries) {
+      final value = entry.value;
+      if (value != null && (value < 0 || value > 100)) {
+        throw RangeError.range(
+          value,
+          0,
+          100,
+          'value',
+          'Las calificaciones deben estar entre 0 y 100.',
+        );
+      }
+    }
+
     final db = await _db.database;
     for (final entry in entries) {
       await db.execute(

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
+
+import '../widgets/widgets.dart';
 
 import 'package:anunciacion/src/domain/entities/grade_entry.dart';
 import '../screens/notas_controller.dart';
@@ -65,110 +67,108 @@ class _GradesTabBodyState extends ConsumerState<GradesTabBody> {
     selectedSubject = _subjects.isNotEmpty ? _subjects.first : null;
     selectedPeriod = _periods.isNotEmpty ? _periods.first : null;
 
-    final grades = _computeAvailableGrades();
-    if (grades.isNotEmpty) {
-      selectedGrade = grades.first;
-      final sections = _sectionsForGrade(selectedGrade!);
-      if (sections.isNotEmpty) {
-        selectedSection = sections.first;
-      }
-    }
+  final Map<int, TextEditingController> _controllers = {};
+  final Map<int, String> _lastValidInputs = {};
+  final Set<int> _invalidStudentIds = {};
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _applyFilters();
-    });
-  }
+  bool get _hasInvalidInputs => _invalidStudentIds.isNotEmpty;
 
-  @override
-  void didUpdateWidget(covariant GradesTabBody oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!listEquals(oldWidget.assignedGrades, widget.assignedGrades)) {
-      final grades = _computeAvailableGrades();
-      if (grades.isEmpty) {
-        if (selectedGrade != null || selectedSection != null) {
-          setState(() {
-            selectedGrade = null;
-            selectedSection = null;
-          });
-        }
-      } else if (selectedGrade == null || !grades.contains(selectedGrade)) {
-        setState(() {
-          selectedGrade = grades.first;
-          final sections = _sectionsForGrade(selectedGrade!);
-          selectedSection = sections.isNotEmpty ? sections.first : null;
-        });
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _applyFilters();
-        });
-      }
-    }
-  }
-
-  List<String> get _availableGrades => _computeAvailableGrades();
-
-  List<String> get _availableSections {
-    if (selectedGrade == null) return [];
-    return _sectionsForGrade(selectedGrade!);
-  }
-
-  bool get _canShowStudents =>
+  bool get canShowStudents =>
+      selectedSubject != null &&
       selectedGrade != null &&
       selectedSection != null &&
       selectedSubject != null &&
       selectedPeriod != null;
 
-  List<String> _computeAvailableGrades() {
-    final seen = <String>{};
-    final grades = <String>[];
-    for (final group in _groups) {
-      if (seen.add(group.grade)) {
-        grades.add(group.grade);
-      }
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
     }
-
-    if (widget.userRole == 'Docente' && widget.assignedGrades.isNotEmpty) {
-      return grades
-          .where((grade) => widget.assignedGrades.contains(grade))
-          .toList();
-    }
-    return grades;
+    super.dispose();
   }
 
-  List<String> _sectionsForGrade(String grade) {
-    final seen = <String>{};
-    final sections = <String>[];
-    for (final group in _groups) {
-      if (group.grade == grade && seen.add(group.section)) {
-        sections.add(group.section);
-      }
+  String _formatGrade(double? value) {
+    if (value == null) return '';
+    if (value % 1 == 0) {
+      return value.toStringAsFixed(0);
     }
-    return sections;
+    return value.toString();
   }
 
-  int? _resolveGroupId() {
-    if (selectedGrade == null || selectedSection == null) return null;
-    for (final group in _groups) {
-      if (group.grade == selectedGrade && group.section == selectedSection) {
-        return group.id;
-      }
+  void _handleGradeChange(
+    Map<String, dynamic> student,
+    TextEditingController controller,
+    String rawValue,
+  ) {
+    final studentId = student['id'] as int;
+    final normalized = rawValue.replaceAll(',', '.');
+
+    if (rawValue != normalized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.value = controller.value.copyWith(
+          text: normalized,
+          selection: TextSelection.collapsed(offset: normalized.length),
+        );
+      });
     }
-    return null;
-  }
 
-  void _applyFilters() {
-    final groupId = _resolveGroupId();
-    final subjectId = selectedSubject?.id;
-    final periodId = selectedPeriod?.id;
-
-    if (groupId == null || subjectId == null || periodId == null) {
+    if (normalized.isEmpty) {
+      final hadLastValid = _lastValidInputs.containsKey(studentId);
+      setState(() {
+        student['grade'] = null;
+        _lastValidInputs.remove(studentId);
+        if (hadLastValid) {
+          _invalidStudentIds.remove(studentId);
+        }
+      });
       return;
     }
 
-    final controller = ref.read(notasControllerProvider.notifier);
-    controller.setFilters(
-      groupId: groupId,
-      subjectId: subjectId,
-      periodId: periodId,
+    final parsedValue = double.tryParse(normalized);
+    final isValid = parsedValue != null && parsedValue >= 0 && parsedValue <= 100;
+
+    if (!isValid) {
+      final lastValidText = _lastValidInputs[studentId];
+      if (lastValidText != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.value = controller.value.copyWith(
+            text: lastValidText,
+            selection: TextSelection.collapsed(offset: lastValidText.length),
+          );
+        });
+
+        final lastValidValue = double.tryParse(lastValidText);
+        if (lastValidValue != null) {
+          setState(() {
+            student['grade'] = lastValidValue;
+            _invalidStudentIds.remove(studentId);
+          });
+          return;
+        }
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.clear();
+      });
+
+      setState(() {
+        student['grade'] = null;
+        _invalidStudentIds.add(studentId);
+      });
+      return;
+    }
+
+    setState(() {
+      student['grade'] = parsedValue;
+      _lastValidInputs[studentId] = normalized;
+      _invalidStudentIds.remove(studentId);
+    });
+  }
+
+  void _saveGrades() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Calificaciones guardadas exitosamente')),
     );
     controller.load();
   }
@@ -324,61 +324,76 @@ class _GradesTabBodyState extends ConsumerState<GradesTabBody> {
                       style:
                           TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 12),
-                  if (notasState.loading) ...[
-                    const LinearProgressIndicator(),
-                    const SizedBox(height: 16),
-                  ],
-                  if (notasState.error != null)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        notasState.error!,
-                        style: TextStyle(
-                          color: Colors.red.shade700,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                  for (final s in students) ...[
+                    Builder(
+                      builder: (context) {
+                        final studentId = s['id'] as int;
+                        final controller = _controllers.putIfAbsent(studentId, () {
+                          final text = _formatGrade(s['grade'] as double?);
+                          if (text.isNotEmpty) {
+                            _lastValidInputs[studentId] = text;
+                          }
+                          return TextEditingController(text: text);
+                        });
+
+                        return Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(s['name'],
+                                      style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700)),
+                                ),
+                                const SizedBox(width: 10),
+                                SizedBox(
+                                  width: 90,
+                                  child: TextField(
+                                    controller: controller,
+                                    textAlign: TextAlign.center,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                      signed: false,
+                                      decimal: true,
+                                    ),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'[0-9.,]'),
+                                      ),
+                                    ],
+                                    decoration: InputDecoration(
+                                      hintText: '0-100',
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 6),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: const BorderSide(
+                                            color: Colors.black26),
+                                      ),
+                                      errorText: _invalidStudentIds
+                                              .contains(studentId)
+                                          ? 'Ingrese un valor entre 0 y 100'
+                                          : null,
+                                    ),
+                                    onChanged: (val) =>
+                                        _handleGradeChange(s, controller, val),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(
+                                height: 20, color: Color(0xFFEAEAEA)),
+                          ],
+                        );
+                      },
                     ),
-                  if (!notasState.loading && entries.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 24),
-                      child: Text(
-                        'No se encontraron estudiantes para los filtros seleccionados.',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    )
-                  else if (entries.isNotEmpty) ...[
-                    for (int i = 0; i < entries.length; i++) ...[
-                      StudentGradeRow(
-                        id: entries[i].studentId,
-                        name: entries[i].studentName ??
-                            'Estudiante ${entries[i].studentId}',
-                        grade: entries[i].value,
-                        onChanged: (value) =>
-                            _handleGradeChange(entries[i].studentId, value),
-                      ),
-                      if (i != entries.length - 1)
-                        const Divider(height: 20, color: Color(0xFFEAEAEA)),
-                    ],
-                    const SizedBox(height: 12),
-                    _SummaryBox(entries: entries, average: notasState.average),
-                    const SizedBox(height: 14),
                   ],
                   BlackButton(
                     label: 'Guardar Calificaciones',
-                    onPressed:
-                        entries.isEmpty ? null : () => _saveGrades(),
-                    busy: notasState.loading,
+                    onPressed: _hasInvalidInputs ? null : _saveGrades,
                   ),
                 ],
               ),

@@ -1,5 +1,6 @@
 // Exportar todos los Value Objects
 export 'address.dart';
+export 'activity_filters.dart';
 export 'dpi.dart';
 export 'email.dart';
 export 'gender.dart';
