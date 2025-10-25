@@ -94,13 +94,7 @@ class NotasController extends StateNotifier<NotasState> {
         periodId: state.periodId!,
       );
 
-      final average = entries.isEmpty
-          ? 0.0
-          : entries
-                  .where((e) => e.value != null)
-                  .map((e) => e.value!)
-                  .reduce((a, b) => a + b) /
-              entries.where((e) => e.value != null).length;
+      final average = _calculateAverage(entries);
 
       state = state.copyWith(
         entries: entries,
@@ -116,15 +110,28 @@ class NotasController extends StateNotifier<NotasState> {
   }
 
   /// Actualiza el valor de una calificación
-  void updateValue(int studentId, double value) {
+  void updateValue(int studentId, double? value) {
     final updatedEntries = state.entries.map((entry) {
       if (entry.studentId == studentId) {
-        return entry.copyWith(value: value);
+        return GradeEntry(
+          id: entry.id,
+          studentId: entry.studentId,
+          subjectId: entry.subjectId,
+          periodId: entry.periodId,
+          value: value,
+          studentName: entry.studentName,
+        );
       }
       return entry;
     }).toList();
 
-    state = state.copyWith(entries: updatedEntries);
+    final average = _calculateAverage(updatedEntries);
+
+    state = state.copyWith(
+      entries: updatedEntries,
+      average: average,
+      error: null,
+    );
   }
 
   /// Guarda todas las calificaciones modificadas
@@ -135,7 +142,6 @@ class NotasController extends StateNotifier<NotasState> {
 
     try {
       await _upsertGradeUseCase.upsertBatch(state.entries);
-      state = state.copyWith(loading: false);
 
       // Recargar para obtener los datos actualizados
       await load();
@@ -150,5 +156,15 @@ class NotasController extends StateNotifier<NotasState> {
   /// Limpia el estado
   void clear() {
     state = const NotasState();
+  }
+
+  double _calculateAverage(List<GradeEntry> entries) {
+    final valid = entries
+        .where((e) => e.value != null)
+        .map((e) => e.value!)
+        .toList();
+    if (valid.isEmpty) return 0.0;
+    final total = valid.reduce((a, b) => a + b);
+    return total / valid.length;
   }
 }

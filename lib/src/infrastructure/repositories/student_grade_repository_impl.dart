@@ -11,8 +11,14 @@ class StudentGradeRepositoryImpl implements StudentGradeRepository {
     final db = await _db.database;
     try {
       final result = await db.execute(
-        postgres.Sql.named('SELECT * FROM student_grades WHERE id = @id'),
-        parameters: {'id': id}
+        postgres.Sql.named('''
+          SELECT sg.id, sg.student_id, sg.subject_id, sg.period_id, sg.value,
+                 s.nombre AS student_name
+          FROM student_grades sg
+          JOIN estudiantes s ON s.id = sg.student_id
+          WHERE sg.id = @id
+        '''),
+        parameters: {'id': id},
       );
       if (result.isEmpty) return null;
       return _mapToGradeEntry(result.first.toColumnMap());
@@ -25,7 +31,13 @@ class StudentGradeRepositoryImpl implements StudentGradeRepository {
   @override
   Future<List<GradeEntry>> findAll() async {
     final db = await _db.database;
-    final result = await db.execute('SELECT * FROM student_grades ORDER BY student_id, subject_id, period_id');
+    final result = await db.execute('''
+      SELECT sg.id, sg.student_id, sg.subject_id, sg.period_id, sg.value,
+             s.nombre AS student_name
+      FROM student_grades sg
+      JOIN estudiantes s ON s.id = sg.student_id
+      ORDER BY sg.student_id, sg.subject_id, sg.period_id
+    ''');
     return result.map((row) => _mapToGradeEntry(row.toColumnMap())).toList();
   }
 
@@ -128,22 +140,31 @@ class StudentGradeRepositoryImpl implements StudentGradeRepository {
     final db = await _db.database;
     final result = await db.execute(
       postgres.Sql.named('''
-        SELECT sg.id, sg.student_id, sg.subject_id, sg.period_id, sg.value
-        FROM student_grades sg
-        JOIN estudiantes s ON s.id = sg.student_id
+        SELECT sg.id,
+               s.id AS student_id,
+               COALESCE(sg.subject_id, @subjectId) AS subject_id,
+               COALESCE(sg.period_id, @periodId) AS period_id,
+               sg.value,
+               s.nombre AS student_name
+        FROM estudiantes s
+        LEFT JOIN student_grades sg
+               ON sg.student_id = s.id
+              AND sg.subject_id = @subjectId
+              AND sg.period_id = @periodId
         WHERE s.group_id = @groupId
-          AND sg.subject_id = @subjectId
-          AND sg.period_id = @periodId
         ORDER BY s.nombre
       '''),
       parameters: {
         'groupId': groupId,
         'subjectId': subjectId,
         'periodId': periodId,
-      }
+      },
     );
 
-    return result.map((row) => _mapToGradeEntry(row.toColumnMap())).toList();
+    return result
+        .map((row) => _mapToGradeEntry(row.toColumnMap(),
+            subjectId: subjectId, periodId: periodId))
+        .toList();
   }
 
   @override
@@ -212,28 +233,33 @@ class StudentGradeRepositoryImpl implements StudentGradeRepository {
     final db = await _db.database;
     final result = await db.execute(
       postgres.Sql.named('''
-        SELECT * FROM student_grades
-        WHERE student_id = @studentId
-          AND subject_id = @subjectId
-          AND period_id = @periodId
+        SELECT sg.id, sg.student_id, sg.subject_id, sg.period_id, sg.value,
+               s.nombre AS student_name
+        FROM student_grades sg
+        JOIN estudiantes s ON s.id = sg.student_id
+        WHERE sg.student_id = @studentId
+          AND sg.subject_id = @subjectId
+          AND sg.period_id = @periodId
       '''),
       parameters: {
         'studentId': studentId,
         'subjectId': subjectId,
         'periodId': periodId,
-      }
+      },
     );
 
     return result.map((row) => _mapToGradeEntry(row.toColumnMap())).toList();
   }
 
-  GradeEntry _mapToGradeEntry(Map<String, dynamic> row) {
+  GradeEntry _mapToGradeEntry(Map<String, dynamic> row,
+      {int? subjectId, int? periodId}) {
     return GradeEntry(
       id: row['id'] as int?,
       studentId: row['student_id'] as int,
-      subjectId: row['subject_id'] as int,
-      periodId: row['period_id'] as int,
+      subjectId: (row['subject_id'] ?? subjectId) as int,
+      periodId: (row['period_id'] ?? periodId) as int,
       value: (row['value'] as num?)?.toDouble(),
+      studentName: row['student_name'] as String?,
     );
   }
 }

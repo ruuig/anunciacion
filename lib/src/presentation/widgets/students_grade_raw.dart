@@ -23,6 +23,14 @@ class StudentGradeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String _initialValue() {
+      if (grade == null) return '';
+      if (grade! % 1 == 0) {
+        return grade!.toStringAsFixed(0);
+      }
+      return grade!.toStringAsFixed(1);
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -38,7 +46,7 @@ class StudentGradeRow extends StatelessWidget {
           const SizedBox(width: 10),
           SizedBox(
             width: 86,
-            child: TextField(
+            child: TextFormField(
               key: ValueKey('grade_$id'),
               textAlign: TextAlign.center,
               keyboardType:
@@ -47,6 +55,7 @@ class StudentGradeRow extends StatelessWidget {
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9\.,]')),
                 LengthLimitingTextInputFormatter(6),
               ],
+              initialValue: _initialValue(),
               decoration: InputDecoration(
                 hintText: '0–100',
                 hintStyle: const TextStyle(fontWeight: FontWeight.w700),

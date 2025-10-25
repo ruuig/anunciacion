@@ -7,6 +7,7 @@ class GradeEntry extends Equatable {
   final int subjectId;
   final int periodId;
   final double? value;
+  final String? studentName;
 
   const GradeEntry({
     this.id,
@@ -14,6 +15,7 @@ class GradeEntry extends Equatable {
     required this.subjectId,
     required this.periodId,
     this.value,
+    this.studentName,
   });
 
   /// Constructor para crear una nueva entrada de calificación
@@ -22,6 +24,7 @@ class GradeEntry extends Equatable {
     required int subjectId,
     required int periodId,
     double? value,
+    String? studentName,
   }) {
     return GradeEntry(
       id: null,
@@ -29,6 +32,7 @@ class GradeEntry extends Equatable {
       subjectId: subjectId,
       periodId: periodId,
       value: value,
+      studentName: studentName,
     );
   }
 
@@ -39,6 +43,7 @@ class GradeEntry extends Equatable {
     int? subjectId,
     int? periodId,
     double? value,
+    String? studentName,
   }) {
     return GradeEntry(
       id: id ?? this.id,
@@ -46,13 +51,14 @@ class GradeEntry extends Equatable {
       subjectId: subjectId ?? this.subjectId,
       periodId: periodId ?? this.periodId,
       value: value ?? this.value,
+      studentName: studentName ?? this.studentName,
     );
   }
 
   @override
-  List<Object?> get props => [id, studentId, subjectId, periodId, value];
+  List<Object?> get props => [id, studentId, subjectId, periodId, value, studentName];
 
   @override
   String toString() =>
-      'GradeEntry(id: $id, studentId: $studentId, subjectId: $subjectId, periodId: $periodId, value: $value)';
+      'GradeEntry(id: $id, studentId: $studentId, subjectId: $subjectId, periodId: $periodId, value: $value, studentName: $studentName)';
 }
