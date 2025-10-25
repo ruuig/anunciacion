@@ -1,7 +1,5 @@
-import 'package:anunciacion/src/domain/domain.dart';
-import 'package:anunciacion/src/providers/activity_providers.dart';
-import 'package:anunciacion/src/providers/user_provider.dart';
-import 'package:collection/collection.dart';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -164,122 +162,30 @@ class _ActivitiesTabBodyState extends ConsumerState<ActivitiesTabBody> {
                       enabled: gradesAsync.hasValue,
                     ),
                     const SizedBox(height: 12),
-                    SelectField<Section>(
-                      label: 'Sección',
-                      placeholder: filters.gradeId == null
-                          ? 'Selecciona un grado primero'
-                          : sectionsAsync.isLoading
-                              ? 'Cargando secciones...'
-                              : 'Selecciona una sección',
-                      value: selectedSection,
-                      items: sections,
-                      itemLabel: (s) => s.name,
-                      onSelected: (section) => ref
-                          .read(activityFiltersProvider.notifier)
-                          .setSection(section.id),
-                      enabled: filters.gradeId != null && sectionsAsync.hasValue,
-                    ),
-                    const SizedBox(height: 12),
-                    SelectField<Subject>(
-                      label: 'Materia',
-                      placeholder: subjectsAsync.isLoading
-                          ? 'Cargando materias...'
-                          : 'Selecciona una materia',
-                      value: selectedSubject,
-                      items: subjects,
-                      itemLabel: (s) => s.name,
-                      onSelected: (subject) => ref
-                          .read(activityFiltersProvider.notifier)
-                          .setSubject(subject.id),
-                      enabled: subjectsAsync.hasValue,
-                    ),
-                    const SizedBox(height: 12),
-                    SelectField<String>(
-                      label: 'Tipo',
-                      placeholder: 'Todos los tipos',
-                      value: filters.type,
-                      items: types,
-                      itemLabel: (value) => value,
-                      onSelected: (value) =>
-                          ref.read(activityFiltersProvider.notifier).setType(value),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              activitiesAsync.when(
-                loading: () => const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                error: (error, _) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  child: Text(
-                    'Error al cargar actividades: $error',
-                    style: const TextStyle(color: Colors.redAccent),
-                  ),
-                ),
-                data: (activities) => activities.isEmpty
-                    ? const EmptyState(
-                        title: 'No hay actividades',
-                        description: 'Crea tu primera actividad para comenzar',
-                        icon: Icon(
-                          Icons.assignment_outlined,
-                          size: 48,
-                          color: Colors.black45,
-                        ),
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Actividades',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ...activities.map((activity) {
-                            final totalStudents = activity.totalStudents ?? 0;
-                            final gradedStudents = activity.gradedStudents ?? 0;
-                            final progress = totalStudents == 0
-                                ? 0.0
-                                : (gradedStudents / totalStudents).clamp(0, 1);
-                            final avg = activity.averagePercentage;
-                            final dateLabel = _dateFormat.format(
-                              (activity.scheduledAt ?? activity.createdAt).toLocal(),
-                            );
+                    ...activities.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final a = entry.value;
+                      final studentsGraded = a['studentsGraded'] as int?;
+                      final totalStudents = a['totalStudents'] as int?;
+                      final progress = (studentsGraded ?? 0).toDouble() /
+                          max(totalStudents ?? 0, 1);
+                      final avg = a['averageGrade'] as double?;
+                      final done = a['status'] == 'completed';
 
-                            return Padding(
-                              key: ValueKey('activity_${activity.id}'),
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: AppCard(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            activity.name,
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        _StatusBadge(status: activity.status),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      '${activity.subjectName ?? 'Materia'} • ${activity.gradeName ?? 'Grado'} ${activity.sectionName ?? ''}',
+                      return Padding(
+                        key: ValueKey('${a['name']}_${index}'), // Add more specific key
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: AppCard(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Nombre + estado
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      a['name'] ?? 'Sin nombre',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         color: Colors.black54,

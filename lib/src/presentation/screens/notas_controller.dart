@@ -94,17 +94,22 @@ class NotasController extends StateNotifier<NotasState> {
         periodId: state.periodId!,
       );
 
-      final average = entries.isEmpty
-          ? 0.0
-          : entries
-                  .where((e) => e.value != null)
-                  .map((e) => e.value!)
-                  .reduce((a, b) => a + b) /
-              entries.where((e) => e.value != null).length;
+      final validEntries = entries
+          .where((entry) => entry.value != null)
+          .map((entry) => entry.value!)
+          .toList();
+
+      final double average;
+      if (validEntries.isEmpty) {
+        average = 0.0;
+      } else {
+        final total = validEntries.reduce((a, b) => a + b);
+        average = total / validEntries.length;
+      }
 
       state = state.copyWith(
         entries: entries,
-        average: average.isNaN ? 0.0 : average,
+        average: average,
         loading: false,
       );
     } catch (e) {
@@ -131,14 +136,39 @@ class NotasController extends StateNotifier<NotasState> {
   Future<void> saveAll() async {
     if (state.entries.isEmpty) return;
 
-    state = state.copyWith(loading: true, error: null);
-
     try {
+      GradeEntry? invalidEntry;
+      for (final entry in state.entries) {
+        final value = entry.value;
+        if (value != null && (value < 0 || value > 100)) {
+          invalidEntry = entry;
+          break;
+        }
+      }
+
+      if (invalidEntry != null && invalidEntry.value != null) {
+        throw RangeError.range(
+          invalidEntry.value!,
+          0,
+          100,
+          'value',
+          'Las calificaciones deben estar entre 0 y 100.',
+        );
+      }
+
+      state = state.copyWith(loading: true, error: null);
+
       await _upsertGradeUseCase.upsertBatch(state.entries);
       state = state.copyWith(loading: false);
 
       // Recargar para obtener los datos actualizados
       await load();
+    } on RangeError catch (e) {
+      state = state.copyWith(
+        error: e.message ?? 'Las calificaciones deben estar entre 0 y 100.',
+        loading: false,
+      );
+      rethrow;
     } catch (e) {
       state = state.copyWith(
         error: 'Error al guardar calificaciones: $e',

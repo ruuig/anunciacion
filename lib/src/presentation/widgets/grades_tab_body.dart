@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
 import '../widgets/widgets.dart';
 
 class GradesTabBody extends StatefulWidget {
@@ -43,11 +45,103 @@ class _GradesTabBodyState extends State<GradesTabBody> {
     {'id': 4, 'name': 'Diego Ruiz', 'grade': null},
   ];
 
+  final Map<int, TextEditingController> _controllers = {};
+  final Map<int, String> _lastValidInputs = {};
+  final Set<int> _invalidStudentIds = {};
+
+  bool get _hasInvalidInputs => _invalidStudentIds.isNotEmpty;
+
   bool get canShowStudents =>
       selectedSubject != null &&
       selectedGrade != null &&
       selectedSection != null &&
       selectedPeriod != null;
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  String _formatGrade(double? value) {
+    if (value == null) return '';
+    if (value % 1 == 0) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toString();
+  }
+
+  void _handleGradeChange(
+    Map<String, dynamic> student,
+    TextEditingController controller,
+    String rawValue,
+  ) {
+    final studentId = student['id'] as int;
+    final normalized = rawValue.replaceAll(',', '.');
+
+    if (rawValue != normalized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.value = controller.value.copyWith(
+          text: normalized,
+          selection: TextSelection.collapsed(offset: normalized.length),
+        );
+      });
+    }
+
+    if (normalized.isEmpty) {
+      final hadLastValid = _lastValidInputs.containsKey(studentId);
+      setState(() {
+        student['grade'] = null;
+        _lastValidInputs.remove(studentId);
+        if (hadLastValid) {
+          _invalidStudentIds.remove(studentId);
+        }
+      });
+      return;
+    }
+
+    final parsedValue = double.tryParse(normalized);
+    final isValid = parsedValue != null && parsedValue >= 0 && parsedValue <= 100;
+
+    if (!isValid) {
+      final lastValidText = _lastValidInputs[studentId];
+      if (lastValidText != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.value = controller.value.copyWith(
+            text: lastValidText,
+            selection: TextSelection.collapsed(offset: lastValidText.length),
+          );
+        });
+
+        final lastValidValue = double.tryParse(lastValidText);
+        if (lastValidValue != null) {
+          setState(() {
+            student['grade'] = lastValidValue;
+            _invalidStudentIds.remove(studentId);
+          });
+          return;
+        }
+      }
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.clear();
+      });
+
+      setState(() {
+        student['grade'] = null;
+        _invalidStudentIds.add(studentId);
+      });
+      return;
+    }
+
+    setState(() {
+      student['grade'] = parsedValue;
+      _lastValidInputs[studentId] = normalized;
+      _invalidStudentIds.remove(studentId);
+    });
+  }
 
   void _saveGrades() {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -138,45 +232,79 @@ class _GradesTabBodyState extends State<GradesTabBody> {
                           TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 12),
                   for (final s in students) ...[
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(s['name'],
-                              style: const TextStyle(
-                                  fontSize: 16, fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 70,
-                          child: TextField(
-                            textAlign: TextAlign.center,
-                            keyboardType: TextInputType.number,
-                            decoration: InputDecoration(
-                              hintText: '0-100',
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 6),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(10),
-                                borderSide:
-                                    const BorderSide(color: Colors.black26),
-                              ),
+                    Builder(
+                      builder: (context) {
+                        final studentId = s['id'] as int;
+                        final controller = _controllers.putIfAbsent(studentId, () {
+                          final text = _formatGrade(s['grade'] as double?);
+                          if (text.isNotEmpty) {
+                            _lastValidInputs[studentId] = text;
+                          }
+                          return TextEditingController(text: text);
+                        });
+
+                        return Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(s['name'],
+                                      style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700)),
+                                ),
+                                const SizedBox(width: 10),
+                                SizedBox(
+                                  width: 90,
+                                  child: TextField(
+                                    controller: controller,
+                                    textAlign: TextAlign.center,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                      signed: false,
+                                      decimal: true,
+                                    ),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(
+                                        RegExp(r'[0-9.,]'),
+                                      ),
+                                    ],
+                                    decoration: InputDecoration(
+                                      hintText: '0-100',
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 6),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        borderSide: const BorderSide(
+                                            color: Colors.black26),
+                                      ),
+                                      errorText: _invalidStudentIds
+                                              .contains(studentId)
+                                          ? 'Ingrese un valor entre 0 y 100'
+                                          : null,
+                                    ),
+                                    onChanged: (val) =>
+                                        _handleGradeChange(s, controller, val),
+                                  ),
+                                ),
+                              ],
                             ),
-                            onChanged: (val) {
-                              final n = double.tryParse(val);
-                              setState(() => s['grade'] = n);
-                            },
-                          ),
-                        ),
-                      ],
+                            const Divider(
+                                height: 20, color: Color(0xFFEAEAEA)),
+                          ],
+                        );
+                      },
                     ),
-                    const Divider(height: 20, color: Color(0xFFEAEAEA)),
                   ],
                   const SizedBox(height: 12),
                   _SummaryBox(students: students),
                   const SizedBox(height: 14),
                   BlackButton(
-                      label: 'Guardar Calificaciones', onPressed: _saveGrades),
+                    label: 'Guardar Calificaciones',
+                    onPressed: _hasInvalidInputs ? null : _saveGrades,
+                  ),
                 ],
               ),
             ),
