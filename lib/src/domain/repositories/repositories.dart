@@ -1,5 +1,6 @@
 // Exportar todas las interfaces de repositorios
 export 'base_repository.dart';
+export 'activity_repository.dart';
 export 'grade_repository.dart';
 export 'parent_repository.dart';
 export 'role_repository.dart';
