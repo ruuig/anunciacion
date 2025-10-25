@@ -1,9 +1,18 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../widgets/widgets.dart';
 
-class GradesTabBody extends StatefulWidget {
+import 'package:anunciacion/src/domain/entities/grade_entry.dart';
+import '../screens/notas_controller.dart';
+import 'app_card.dart';
+import 'black_button.dart';
+import 'empty_state.dart';
+import 'select_field.dart';
+import 'students_grade_raw.dart';
+
+class GradesTabBody extends ConsumerStatefulWidget {
   final String userRole;
   final List<String> assignedGrades;
 
@@ -14,36 +23,49 @@ class GradesTabBody extends StatefulWidget {
   });
 
   @override
-  State<GradesTabBody> createState() => _GradesTabBodyState();
+  ConsumerState<GradesTabBody> createState() => _GradesTabBodyState();
 }
 
-class _GradesTabBodyState extends State<GradesTabBody> {
-  final subjects = ['Matemáticas', 'Español', 'Ciencias Naturales', 'Inglés'];
-  final grades = [
-    '1ro Primaria',
-    '2do Primaria',
-    '3ro Primaria',
-    '4to Primaria'
-  ];
-  final sections = ['A', 'B', 'C'];
-  final periods = [
-    'Primer Bimestre',
-    'Segundo Bimestre',
-    'Tercer Bimestre',
-    'Cuarto Bimestre'
+class _GradesTabBodyState extends ConsumerState<GradesTabBody> {
+  static const List<_SelectOption> _subjects = [
+    _SelectOption(id: 1, label: 'Matemáticas'),
+    _SelectOption(id: 2, label: 'Español'),
+    _SelectOption(id: 3, label: 'Ciencias Naturales'),
+    _SelectOption(id: 4, label: 'Inglés'),
   ];
 
-  String? selectedSubject;
+  static const List<_SelectOption> _periods = [
+    _SelectOption(id: 1, label: 'Primer Bimestre'),
+    _SelectOption(id: 2, label: 'Segundo Bimestre'),
+    _SelectOption(id: 3, label: 'Tercer Bimestre'),
+    _SelectOption(id: 4, label: 'Cuarto Bimestre'),
+  ];
+
+  static const List<_GroupOption> _groups = [
+    _GroupOption(id: 101, grade: '1ro Primaria', section: 'A'),
+    _GroupOption(id: 102, grade: '1ro Primaria', section: 'B'),
+    _GroupOption(id: 103, grade: '1ro Primaria', section: 'C'),
+    _GroupOption(id: 201, grade: '2do Primaria', section: 'A'),
+    _GroupOption(id: 202, grade: '2do Primaria', section: 'B'),
+    _GroupOption(id: 203, grade: '2do Primaria', section: 'C'),
+    _GroupOption(id: 301, grade: '3ro Primaria', section: 'A'),
+    _GroupOption(id: 302, grade: '3ro Primaria', section: 'B'),
+    _GroupOption(id: 303, grade: '3ro Primaria', section: 'C'),
+    _GroupOption(id: 401, grade: '4to Primaria', section: 'A'),
+    _GroupOption(id: 402, grade: '4to Primaria', section: 'B'),
+    _GroupOption(id: 403, grade: '4to Primaria', section: 'C'),
+  ];
+
+  _SelectOption? selectedSubject;
+  _SelectOption? selectedPeriod;
   String? selectedGrade;
   String? selectedSection;
-  String? selectedPeriod;
 
-  List<Map<String, dynamic>> students = [
-    {'id': 1, 'name': 'Ana López', 'grade': null},
-    {'id': 2, 'name': 'Carlos Mendez', 'grade': null},
-    {'id': 3, 'name': 'María Hernández', 'grade': null},
-    {'id': 4, 'name': 'Diego Ruiz', 'grade': null},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    selectedSubject = _subjects.isNotEmpty ? _subjects.first : null;
+    selectedPeriod = _periods.isNotEmpty ? _periods.first : null;
 
   final Map<int, TextEditingController> _controllers = {};
   final Map<int, String> _lastValidInputs = {};
@@ -55,6 +77,7 @@ class _GradesTabBodyState extends State<GradesTabBody> {
       selectedSubject != null &&
       selectedGrade != null &&
       selectedSection != null &&
+      selectedSubject != null &&
       selectedPeriod != null;
 
   @override
@@ -147,10 +170,62 @@ class _GradesTabBodyState extends State<GradesTabBody> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Calificaciones guardadas exitosamente')),
     );
+    controller.load();
+  }
+
+  void _handleGradeChange(int studentId, String rawValue) {
+    final trimmed = rawValue.trim();
+    if (trimmed.isEmpty) {
+      ref.read(notasControllerProvider.notifier).updateValue(studentId, null);
+      return;
+    }
+
+    final normalized = trimmed.replaceAll(',', '.');
+    final value = double.tryParse(normalized);
+    if (value != null) {
+      ref.read(notasControllerProvider.notifier).updateValue(studentId, value);
+    }
+  }
+
+  Future<void> _saveGrades() async {
+    final state = ref.read(notasControllerProvider);
+    final hasValues = state.entries.any((entry) => entry.value != null);
+    if (!hasValues) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No hay calificaciones para guardar'),
+          ),
+        );
+      }
+      return;
+    }
+
+    await ref.read(notasControllerProvider.notifier).saveAll();
+    if (!mounted) return;
+
+    final updated = ref.read(notasControllerProvider);
+    if (updated.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(updated.error!),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Calificaciones guardadas exitosamente'),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final notasState = ref.watch(notasControllerProvider);
+    final entries = notasState.entries;
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -168,13 +243,16 @@ class _GradesTabBodyState extends State<GradesTabBody> {
                   style: TextStyle(fontSize: 14, color: Colors.black54),
                 ),
                 const SizedBox(height: 20),
-                SelectField<String>(
+                SelectField<_SelectOption>(
                   label: 'Materia',
                   placeholder: 'Selecciona una materia',
                   value: selectedSubject,
-                  items: subjects,
-                  itemLabel: (e) => e,
-                  onSelected: (e) => setState(() => selectedSubject = e),
+                  items: _subjects,
+                  itemLabel: (e) => e.label,
+                  onSelected: (e) {
+                    setState(() => selectedSubject = e);
+                    _applyFilters();
+                  },
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -184,9 +262,17 @@ class _GradesTabBodyState extends State<GradesTabBody> {
                         label: 'Grado',
                         placeholder: 'Grado',
                         value: selectedGrade,
-                        items: grades,
+                        items: _availableGrades,
                         itemLabel: (e) => e,
-                        onSelected: (e) => setState(() => selectedGrade = e),
+                        onSelected: (grade) {
+                          setState(() {
+                            selectedGrade = grade;
+                            final sections = _sectionsForGrade(grade);
+                            selectedSection =
+                                sections.isNotEmpty ? sections.first : null;
+                          });
+                          _applyFilters();
+                        },
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -195,27 +281,34 @@ class _GradesTabBodyState extends State<GradesTabBody> {
                         label: 'Sección',
                         placeholder: 'Sección',
                         value: selectedSection,
-                        items: sections,
+                        items: _availableSections,
                         itemLabel: (e) => e,
-                        onSelected: (e) => setState(() => selectedSection = e),
+                        enabled: _availableSections.isNotEmpty,
+                        onSelected: (section) {
+                          setState(() => selectedSection = section);
+                          _applyFilters();
+                        },
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                SelectField<String>(
+                SelectField<_SelectOption>(
                   label: 'Período',
                   placeholder: 'Selecciona el período',
                   value: selectedPeriod,
-                  items: periods,
-                  itemLabel: (e) => e,
-                  onSelected: (e) => setState(() => selectedPeriod = e),
+                  items: _periods,
+                  itemLabel: (e) => e.label,
+                  onSelected: (period) {
+                    setState(() => selectedPeriod = period);
+                    _applyFilters();
+                  },
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          if (!canShowStudents)
+          if (!_canShowStudents)
             EmptyState(
               title: 'Selecciona todos los campos',
               description: 'Elige materia, grado, sección y período',
@@ -298,9 +391,6 @@ class _GradesTabBodyState extends State<GradesTabBody> {
                       },
                     ),
                   ],
-                  const SizedBox(height: 12),
-                  _SummaryBox(students: students),
-                  const SizedBox(height: 14),
                   BlackButton(
                     label: 'Guardar Calificaciones',
                     onPressed: _hasInvalidInputs ? null : _saveGrades,
@@ -315,31 +405,52 @@ class _GradesTabBodyState extends State<GradesTabBody> {
 }
 
 class _SummaryBox extends StatelessWidget {
-  final List<Map<String, dynamic>> students;
-  const _SummaryBox({required this.students});
+  final List<GradeEntry> entries;
+  final double average;
+  const _SummaryBox({required this.entries, required this.average});
 
   @override
   Widget build(BuildContext context) {
-    final aprobados = students.where((s) => (s['grade'] ?? 0) >= 70).length;
+    final aprobados =
+        entries.where((s) => (s.value ?? 0) >= 70).length;
     final reprobados =
-        students.where((s) => s['grade'] != null && s['grade'] < 70).length;
-    final pendientes = students.where((s) => s['grade'] == null).length;
+        entries.where((s) => s.value != null && s.value! < 70).length;
+    final pendientes = entries.where((s) => s.value == null).length;
+    final promedio = entries.isEmpty ? 0.0 : average;
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _StatBox(
+        Expanded(
+          child: _StatBox(
             label: 'Aprobados',
             value: aprobados.toString(),
-            color: Colors.green),
-        _StatBox(
+            color: Colors.green,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatBox(
             label: 'Reprobados',
             value: reprobados.toString(),
-            color: Colors.red),
-        _StatBox(
+            color: Colors.red,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatBox(
             label: 'Pendientes',
             value: pendientes.toString(),
-            color: Colors.black54),
+            color: Colors.orange,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatBox(
+            label: 'Promedio',
+            value: promedio.toStringAsFixed(1),
+            color: Colors.blueGrey,
+          ),
+        ),
       ],
     );
   }
@@ -350,23 +461,54 @@ class _StatBox extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _StatBox(
-      {required this.label, required this.value, required this.color});
+  const _StatBox({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value,
-            style: TextStyle(
-                fontSize: 18, fontWeight: FontWeight.w900, color: color)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: color,
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(label,
-            style: const TextStyle(
-                fontSize: 13,
-                color: Colors.black54,
-                fontWeight: FontWeight.w600)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            color: Colors.black54,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
+}
+
+class _SelectOption {
+  final int id;
+  final String label;
+
+  const _SelectOption({required this.id, required this.label});
+}
+
+class _GroupOption {
+  final int id;
+  final String grade;
+  final String section;
+
+  const _GroupOption({
+    required this.id,
+    required this.grade,
+    required this.section,
+  });
 }
