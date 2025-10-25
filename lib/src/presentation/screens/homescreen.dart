@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:anunciacion/src/presentation/screens/StudentsPage.dart';
 import 'package:anunciacion/src/presentation/screens/qr_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:anunciacion/src/presentation/widgets/CustomCard.dart';
@@ -97,7 +98,14 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
                     imageUrl: 'assets/estudiantes.png',
                     title: 'Estudiantes',
                     description: 'Perfiles, asistencia y familiares',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StudentsPage(),
+                        ),
+                      );
+                    },
                   ),
                   CustomCard(
                     imageUrl: 'assets/asistencia.png',

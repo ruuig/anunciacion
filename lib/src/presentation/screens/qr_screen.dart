@@ -354,36 +354,61 @@ class _KpiTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFF),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5E9F2)),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: const Color(0xFFEFF4FF),
-            child: Icon(icon, color: Colors.black87),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(value,
-                  style: const TextStyle(
-                      fontSize: 28, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 2),
-              Text(label,
-                  style: const TextStyle(
-                      fontSize: 13,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 78),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFF),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE5E9F2)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFFEFF4FF),
+              child: Icon(icon, color: Colors.black87, size: 22),
+            ),
+            const SizedBox(width: 10),
+            // <- lo que evita el overflow
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Número grande que se reduce si no cabe
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  // Etiqueta en 1-2 líneas con elipsis
+                  Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    softWrap: true,
+                    style: const TextStyle(
+                      fontSize: 12.5,
                       color: Colors.black54,
-                      fontWeight: FontWeight.w700)),
-            ],
-          ),
-        ],
+                      fontWeight: FontWeight.w700,
+                      height: 1.15,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
