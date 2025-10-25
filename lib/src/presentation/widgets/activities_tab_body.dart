@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../widgets/widgets.dart';
 
@@ -209,8 +211,10 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                     ...activities.asMap().entries.map((entry) {
                       final index = entry.key;
                       final a = entry.value;
-                      final progress =
-                          (a['studentsGraded'] as int?)?.toDouble() ?? 0.0 / ((a['totalStudents'] as int?) ?? 1).toDouble();
+                      final studentsGraded = a['studentsGraded'] as int?;
+                      final totalStudents = a['totalStudents'] as int?;
+                      final progress = (studentsGraded ?? 0).toDouble() /
+                          max(totalStudents ?? 0, 1);
                       final avg = a['averageGrade'] as double?;
                       final done = a['status'] == 'completed';
 
