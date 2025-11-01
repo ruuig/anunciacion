@@ -1,11 +1,16 @@
-import 'package:anunciacion/src/presentation/presentation.dart';
-import 'package:anunciacion/src/presentation/widgets/seleccion%20title.dart';
-import 'package:anunciacion/src/presentation/widgets/students_grade_raw.dart';
-import 'package:anunciacion/src/presentation/widgets/sumary-raw.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Modelo simple de Actividad
+// ⚠️ importa tus propios widgets reales:
+import 'package:anunciacion/src/presentation/presentation.dart';
+import 'package:anunciacion/src/presentation/widgets/students_grade_raw.dart';
+// el que llamaste "seleccion title" yo lo escribo igual que tú lo tenías
+import 'package:anunciacion/src/presentation/widgets/seleccion title.dart';
+import 'package:anunciacion/src/presentation/widgets/sumary-raw.dart';
+
+/// =========================================================
+/// 1. MODELO: Activity
+/// =========================================================
 class Activity {
   final int id;
   final String name;
@@ -21,6 +26,11 @@ class Activity {
   final int totalStudents;
   final double? averageGrade;
 
+  // extras
+  final String? description;
+  final bool isGroupWork;
+  final List<GroupActivity> groups;
+
   Activity({
     required this.id,
     required this.name,
@@ -35,6 +45,9 @@ class Activity {
     required this.studentsGraded,
     required this.totalStudents,
     required this.averageGrade,
+    this.description,
+    this.isGroupWork = false,
+    this.groups = const [],
   });
 
   Activity copyWith({
@@ -49,7 +62,10 @@ class Activity {
     String? status,
     int? studentsGraded,
     int? totalStudents,
-    double? averageGrade, // usa null explícito para borrar
+    double? averageGrade,
+    String? description,
+    bool? isGroupWork,
+    List<GroupActivity>? groups,
   }) {
     return Activity(
       id: id,
@@ -64,12 +80,106 @@ class Activity {
       status: status ?? this.status,
       studentsGraded: studentsGraded ?? this.studentsGraded,
       totalStudents: totalStudents ?? this.totalStudents,
-      averageGrade: averageGrade == null ? this.averageGrade : averageGrade,
+      // truco: si averageGrade viene explícitamente como null => se pone null
+      averageGrade: averageGrade != null ? averageGrade : this.averageGrade,
+      description: description ?? this.description,
+      isGroupWork: isGroupWork ?? this.isGroupWork,
+      groups: groups ?? this.groups,
     );
+  }
+
+  // si luego quieres pasar JSON de tu DB:
+  factory Activity.fromMap(Map<String, dynamic> map) {
+    return Activity(
+      id: map['id'] as int,
+      name: map['name'] as String,
+      subject: map['subject'] as String,
+      grade: map['grade'] as String,
+      section: map['section'] as String,
+      period: map['period'] as String,
+      type: map['type'] as String,
+      points: map['points'] as int,
+      date: DateTime.parse(map['date'] as String),
+      status: map['status'] as String,
+      studentsGraded: map['studentsGraded'] as int? ?? 0,
+      totalStudents: map['totalStudents'] as int? ?? 0,
+      averageGrade: (map['averageGrade'] as num?)?.toDouble(),
+      description: map['description'] as String?,
+      isGroupWork: map['isGroupWork'] as bool? ?? false,
+      groups: (map['groups'] as List?)
+              ?.map((g) => GroupActivity.fromMap(g as Map<String, dynamic>))
+              .toList() ??
+          const [],
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'subject': subject,
+      'grade': grade,
+      'section': section,
+      'period': period,
+      'type': type,
+      'points': points,
+      'date': date.toIso8601String(),
+      'status': status,
+      'studentsGraded': studentsGraded,
+      'totalStudents': totalStudents,
+      'averageGrade': averageGrade,
+      'description': description,
+      'isGroupWork': isGroupWork,
+      'groups': groups.map((g) => g.toMap()).toList(),
+    };
   }
 }
 
-/// Pestaña completa: Gestión de Actividades
+/// modelo chiquito para los grupos
+class GroupActivity {
+  final String name;
+  final List<String> members;
+  final double? grade; // nota del grupo en puntos
+
+  GroupActivity({
+    required this.name,
+    this.members = const [],
+    this.grade,
+  });
+
+  GroupActivity copyWith({
+    String? name,
+    List<String>? members,
+    double? grade,
+  }) {
+    return GroupActivity(
+      name: name ?? this.name,
+      members: members ?? this.members,
+      grade: grade ?? this.grade,
+    );
+  }
+
+  factory GroupActivity.fromMap(Map<String, dynamic> map) {
+    return GroupActivity(
+      name: map['name'] as String? ?? 'Grupo',
+      members: (map['members'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
+      grade: (map['grade'] as num?)?.toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'members': members,
+      'grade': grade,
+    };
+  }
+}
+
+/// =========================================================
+/// 2. SCREEN PRINCIPAL
+/// =========================================================
 class FullActivitiesTabBody extends StatefulWidget {
   final String userRole;
   final List<String> assignedGrades;
@@ -80,11 +190,11 @@ class FullActivitiesTabBody extends StatefulWidget {
   });
 
   @override
-  State<ActivitiesTabBody> createState() => _ActivitiesTabBodyState();
+  State<FullActivitiesTabBody> createState() => _FullActivitiesTabBodyState();
 }
 
-class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
-  // Mock de catálogo (puedes cargar desde tus use cases)
+class _FullActivitiesTabBodyState extends State<FullActivitiesTabBody> {
+  // catálogos
   final subjects = const [
     'Matemáticas',
     'Español',
@@ -116,6 +226,7 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
     'Quiz'
   ];
 
+  // lista de actividades ya como CLASE
   List<Activity> activities = [
     Activity(
       id: 1,
@@ -126,22 +237,23 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
       period: 'Primer Bimestre',
       type: 'Examen',
       points: 25,
-      date: DateTime(2024, 2, 15),
+      date: DateTime(2025, 2, 15),
       status: 'completed',
       studentsGraded: 24,
       totalStudents: 28,
       averageGrade: 78.5,
+      description: 'Evaluar fracciones propias e impropias.',
     ),
     Activity(
       id: 2,
-      name: 'Tarea - Ejercicios de suma y resta',
+      name: 'Tarea - Suma y resta',
       subject: 'Matemáticas',
       grade: '3ro Primaria',
       section: 'A',
       period: 'Primer Bimestre',
       type: 'Tarea',
       points: 10,
-      date: DateTime(2024, 2, 10),
+      date: DateTime(2025, 2, 10),
       status: 'completed',
       studentsGraded: 28,
       totalStudents: 28,
@@ -156,17 +268,23 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
       period: 'Primer Bimestre',
       type: 'Proyecto',
       points: 20,
-      date: DateTime(2024, 2, 20),
+      date: DateTime(2025, 2, 20),
       status: 'pending',
       studentsGraded: 0,
       totalStudents: 25,
       averageGrade: null,
+      isGroupWork: true,
+      groups: [
+        GroupActivity(name: 'Grupo 1', members: ['Ana', 'Carlos']),
+        GroupActivity(name: 'Grupo 2', members: ['Diego', 'Sofía', 'Luis']),
+      ],
+      description: 'Maqueta + exposición en clase.',
     ),
   ];
 
   // Filtros
-  String? selectedGrade; // null = todos
-  String? selectedPeriod; // null = todos
+  String? selectedGrade;
+  String? selectedPeriod;
 
   @override
   Widget build(BuildContext context) {
@@ -189,13 +307,12 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Header + Stats
+          // HEADER + STATS
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SectionTitle('Gestión de Actividades'),
-
                 const SizedBox(height: 12),
                 Row(
                   children: [
@@ -212,8 +329,8 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                 BorderRadius.vertical(top: Radius.circular(18)),
                           ),
                           builder: (_) => FractionallySizedBox(
-                            heightFactor: 0.6, // compacto
-                            child: _CreateEditActivitySheet(
+                            heightFactor: 0.7,
+                            child: ActivityFormSheet(
                               subjects: subjects,
                               grades: availableGrades,
                               sections: sections,
@@ -223,12 +340,16 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                           ),
                         );
                         if (created != null) {
-                          setState(() => activities.add(created.copyWith(
+                          setState(() {
+                            activities.add(
+                              created.copyWith(
                                 status: 'pending',
                                 studentsGraded: 0,
                                 totalStudents: 28,
                                 averageGrade: null,
-                              )));
+                              ),
+                            );
+                          });
                         }
                       },
                     ),
@@ -236,21 +357,21 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                   ],
                 ),
                 const SizedBox(height: 16),
-
-                // Stats
                 Row(
                   children: [
                     Expanded(
-                        child: _StatBox(
-                            title: 'Completadas', value: '$completed')),
+                      child:
+                          _StatBox(title: 'Completadas', value: '$completed'),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                        child:
-                            _StatBox(title: 'Pendientes', value: '$pending')),
+                      child: _StatBox(title: 'Pendientes', value: '$pending'),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                        child: _StatBox(
-                            title: 'Puntos Total', value: '$totalPoints')),
+                      child: _StatBox(
+                          title: 'Puntos Total', value: '$totalPoints'),
+                    ),
                   ],
                 ),
               ],
@@ -259,7 +380,7 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
 
           const SizedBox(height: 16),
 
-          // Filtros
+          // FILTROS
           AppCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +398,8 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                         value: selectedGrade,
                         items: availableGrades,
                         itemLabel: (e) => e.isEmpty ? 'Todos' : e,
-                        onSelected: (e) => setState(() => selectedGrade = e.isEmpty ? null : e),
+                        onSelected: (e) => setState(
+                            () => selectedGrade = e.isEmpty ? null : e),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -288,7 +410,8 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                         value: selectedPeriod,
                         items: periods,
                         itemLabel: (e) => e.isEmpty ? 'Todos' : e,
-                        onSelected: (e) => setState(() => selectedPeriod = e.isEmpty ? null : e),
+                        onSelected: (e) => setState(
+                            () => selectedPeriod = e.isEmpty ? null : e),
                       ),
                     ),
                   ],
@@ -299,7 +422,7 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
 
           const SizedBox(height: 16),
 
-          // Lista
+          // LISTA
           if (filtered.isEmpty)
             const EmptyState(title: 'No hay actividades')
           else
@@ -313,7 +436,7 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                 return AppCard(
                   child: Column(
                     children: [
-                      // Header actividad
+                      // header
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -337,17 +460,19 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                 ),
                                 const SizedBox(height: 6),
                                 _InfoRow(
-                                    icon: Icons.menu_book_outlined,
-                                    text: a.subject),
+                                  icon: Icons.menu_book_outlined,
+                                  text: a.subject,
+                                ),
                                 _InfoRow(
-                                    icon: Icons.people_alt_outlined,
-                                    text: '${a.grade} - Sección ${a.section}'),
+                                  icon: Icons.people_alt_outlined,
+                                  text: '${a.grade} - Sección ${a.section}'
+                                      '${a.isGroupWork ? ' • Trabajo grupal' : ''}',
+                                ),
                               ],
                             ),
                           ),
                           const SizedBox(width: 8),
                           Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               _IconSquareButton(
                                 icon: Icons.edit_outlined,
@@ -359,11 +484,12 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                     backgroundColor: Colors.white,
                                     shape: const RoundedRectangleBorder(
                                       borderRadius: BorderRadius.vertical(
-                                          top: Radius.circular(18)),
+                                        top: Radius.circular(18),
+                                      ),
                                     ),
                                     builder: (_) => FractionallySizedBox(
-                                      heightFactor: 0.6,
-                                      child: _CreateEditActivitySheet(
+                                      heightFactor: 0.7,
+                                      child: ActivityFormSheet(
                                         initial: a,
                                         subjects: subjects,
                                         grades: availableGrades,
@@ -374,9 +500,12 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                     ),
                                   );
                                   if (updated != null) {
-                                    setState(() => activities = activities
-                                        .map((x) => x.id == a.id ? updated : x)
-                                        .toList());
+                                    setState(() {
+                                      activities = activities
+                                          .map(
+                                              (x) => x.id == a.id ? updated : x)
+                                          .toList();
+                                    });
                                   }
                                 },
                               ),
@@ -391,7 +520,7 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                           style: TextStyle(
                                               fontWeight: FontWeight.w900)),
                                       content: const Text(
-                                          '¿Seguro que deseas eliminar esta actividad? Esta acción no se puede deshacer.'),
+                                          '¿Seguro que deseas eliminar esta actividad?'),
                                       actions: [
                                         TextButton(
                                           onPressed: () =>
@@ -407,8 +536,10 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                     ),
                                   );
                                   if (ok == true) {
-                                    setState(() => activities
-                                        .removeWhere((x) => x.id == a.id));
+                                    setState(() {
+                                      activities
+                                          .removeWhere((x) => x.id == a.id);
+                                    });
                                   }
                                 },
                               ),
@@ -419,9 +550,9 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
 
                       const SizedBox(height: 12),
                       const Divider(height: 1),
-
-                      // Detalles inferiores: fecha, puntos, progreso, acción
                       const SizedBox(height: 10),
+
+                      // detalles inferiores
                       Row(
                         children: [
                           Expanded(
@@ -432,11 +563,13 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     _InfoRow(
-                                        icon: Icons.event_outlined,
-                                        text: _fmtDate(a.date)),
+                                      icon: Icons.event_outlined,
+                                      text: _fmtDate(a.date),
+                                    ),
                                     _InfoRow(
-                                        icon: Icons.track_changes_outlined,
-                                        text: '${a.points} pts'),
+                                      icon: Icons.track_changes_outlined,
+                                      text: '${a.points} pts',
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
@@ -454,16 +587,18 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                     Text(
                                       'Progreso: ${a.studentsGraded}/${a.totalStudents}',
                                       style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black54,
-                                          fontWeight: FontWeight.w700),
+                                        fontSize: 14,
+                                        color: Colors.black54,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                     if (a.averageGrade != null)
                                       Text(
                                         'Promedio: ${a.averageGrade!.toStringAsFixed(1)}',
                                         style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w900),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                       ),
                                   ],
                                 ),
@@ -476,7 +611,7 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                 ? 'Ver Notas'
                                 : 'Calificar',
                             onPressed: () async {
-                              final graded =
+                              final result =
                                   await showModalBottomSheet<Activity>(
                                 context: context,
                                 isScrollControlled: true,
@@ -486,19 +621,22 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                       top: Radius.circular(18)),
                                 ),
                                 builder: (_) => FractionallySizedBox(
-                                  heightFactor: 0.7,
-                                  child: _GradeActivitySheet(activity: a),
+                                  heightFactor: 0.8,
+                                  child: GradeActivitySheet(activity: a),
                                 ),
                               );
-                              if (graded != null) {
-                                setState(() => activities = activities
-                                    .map((x) => x.id == a.id ? graded : x)
-                                    .toList());
+
+                              if (result != null) {
+                                setState(() {
+                                  activities = activities
+                                      .map((x) => x.id == a.id ? result : x)
+                                      .toList();
+                                });
                               }
                             },
                           ),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 );
@@ -510,8 +648,639 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
   }
 }
 
-/// ---------- Widgets internos de UI ----------
+/// =========================================================
+/// 3. FORM SHEET (CREAR / EDITAR)
+/// =========================================================
+class ActivityFormSheet extends StatefulWidget {
+  final Activity? initial;
+  final List<String> subjects;
+  final List<String> grades;
+  final List<String> sections;
+  final List<String> periods;
+  final List<String> types;
 
+  const ActivityFormSheet({
+    super.key,
+    this.initial,
+    required this.subjects,
+    required this.grades,
+    required this.sections,
+    required this.periods,
+    required this.types,
+  });
+
+  @override
+  State<ActivityFormSheet> createState() => _ActivityFormSheetState();
+}
+
+class _ActivityFormSheetState extends State<ActivityFormSheet> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _pointsCtrl;
+  late final TextEditingController _descCtrl;
+
+  String? _subject;
+  String? _grade;
+  String? _section;
+  String? _period;
+  String? _type;
+  DateTime _date = DateTime.now();
+  bool _isGroupWork = false;
+  List<GroupActivity> _groups = [];
+
+  @override
+  void initState() {
+    super.initState();
+    final init = widget.initial;
+    _nameCtrl = TextEditingController(text: init?.name ?? '');
+    _pointsCtrl = TextEditingController(text: init?.points.toString() ?? '');
+    _descCtrl = TextEditingController(text: init?.description ?? '');
+    _subject = init?.subject;
+    _grade = init?.grade;
+    _section = init?.section;
+    _period = init?.period;
+    _type = init?.type;
+    _date = init?.date ?? DateTime.now();
+    _isGroupWork = init?.isGroupWork ?? false;
+    _groups = init?.groups ?? [];
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _pointsCtrl.dispose();
+    _descCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(2024),
+      lastDate: DateTime(2030),
+    );
+    if (picked != null) {
+      setState(() => _date = picked);
+    }
+  }
+
+  void _addGroup() {
+    setState(() {
+      _groups = [
+        ..._groups,
+        GroupActivity(name: 'Grupo ${_groups.length + 1}')
+      ];
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEdit = widget.initial != null;
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // handle
+            Center(
+              child: Container(
+                width: 46,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isEdit ? 'Editar Actividad' : 'Nueva Actividad',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 14),
+
+            const Text('Nombre', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _nameCtrl,
+              decoration: _inputDecoration('Ej. Examen Parcial'),
+            ),
+            const SizedBox(height: 12),
+
+            const Text('Descripción',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _descCtrl,
+              maxLines: 3,
+              decoration: _inputDecoration(
+                  'Instrucciones, rúbrica o notas del maestro'),
+            ),
+            const SizedBox(height: 12),
+
+            SelectField<String>(
+              label: 'Materia',
+              placeholder: 'Selecciona una materia',
+              value: _subject,
+              items: widget.subjects,
+              itemLabel: (e) => e,
+              onSelected: (v) => setState(() => _subject = v),
+            ),
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                Expanded(
+                  child: SelectField<String>(
+                    label: 'Grado',
+                    placeholder: 'Grado',
+                    value: _grade,
+                    items: widget.grades,
+                    itemLabel: (e) => e,
+                    onSelected: (v) => setState(() => _grade = v),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: SelectField<String>(
+                    label: 'Sección',
+                    placeholder: 'Sección',
+                    value: _section,
+                    items: widget.sections,
+                    itemLabel: (e) => e,
+                    onSelected: (v) => setState(() => _section = v),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            SelectField<String>(
+              label: 'Periodo',
+              placeholder: 'Periodo',
+              value: _period,
+              items: widget.periods,
+              itemLabel: (e) => e,
+              onSelected: (v) => setState(() => _period = v),
+            ),
+            const SizedBox(height: 12),
+
+            SelectField<String>(
+              label: 'Tipo',
+              placeholder: 'Tipo de actividad',
+              value: _type,
+              items: widget.types,
+              itemLabel: (e) => e,
+              onSelected: (v) => setState(() => _type = v),
+            ),
+            const SizedBox(height: 12),
+
+            const Text('Puntos', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _pointsCtrl,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(3),
+              ],
+              decoration: _inputDecoration('Ej. 25'),
+            ),
+            const SizedBox(height: 12),
+
+            const Text('Fecha', style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: _pickDate,
+              child: AbsorbPointer(
+                child: TextField(
+                  decoration: _inputDecoration(_fmtDate(_date)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Switch(
+                  value: _isGroupWork,
+                  activeColor: Colors.black,
+                  onChanged: (v) => setState(() => _isGroupWork = v),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Trabajo grupal',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+
+            if (_isGroupWork)
+              Container(
+                margin: const EdgeInsets.only(top: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF6F6F6),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  children: [
+                    ..._groups.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final g = entry.value;
+                      return ListTile(
+                        title: Text(g.name,
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
+                        subtitle: Text(
+                            g.members.isEmpty
+                                ? 'Sin integrantes'
+                                : g.members.join(', '),
+                            style: const TextStyle(color: Colors.black54)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          onPressed: () {
+                            setState(() {
+                              _groups.removeAt(i);
+                            });
+                          },
+                        ),
+                      );
+                    }).toList(),
+                    const SizedBox(height: 6),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: BlackButton(
+                        label: 'Agregar grupo',
+                        icon: Icons.group_add_outlined,
+                        onPressed: _addGroup,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 18),
+            BlackButton(
+              label: 'Guardar',
+              onPressed: () {
+                if (_nameCtrl.text.trim().isEmpty ||
+                    _subject == null ||
+                    _grade == null ||
+                    _section == null ||
+                    _period == null ||
+                    _type == null ||
+                    _pointsCtrl.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Completa todos los campos')),
+                  );
+                  return;
+                }
+
+                final points = int.tryParse(_pointsCtrl.text.trim()) ?? 0;
+                final act = Activity(
+                  id: widget.initial?.id ??
+                      DateTime.now().millisecondsSinceEpoch,
+                  name: _nameCtrl.text.trim(),
+                  subject: _subject!,
+                  grade: _grade!,
+                  section: _section!,
+                  period: _period!,
+                  type: _type!,
+                  points: points,
+                  date: _date,
+                  status: widget.initial?.status ?? 'pending',
+                  studentsGraded: widget.initial?.studentsGraded ?? 0,
+                  totalStudents: widget.initial?.totalStudents ?? 28,
+                  averageGrade: widget.initial?.averageGrade,
+                  description: _descCtrl.text.trim().isEmpty
+                      ? null
+                      : _descCtrl.text.trim(),
+                  isGroupWork: _isGroupWork,
+                  groups: _isGroupWork ? _groups : const [],
+                );
+                Navigator.pop(context, act);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: const Color(0xFFF4F5F7),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+}
+
+/// =========================================================
+/// 4. SHEET PARA CALIFICAR
+/// =========================================================
+class GradeActivitySheet extends StatefulWidget {
+  final Activity activity;
+  const GradeActivitySheet({super.key, required this.activity});
+
+  @override
+  State<GradeActivitySheet> createState() => _GradeActivitySheetState();
+}
+
+class _GradeActivitySheetState extends State<GradeActivitySheet> {
+  late final bool isGroupWork;
+  late final int maxPoints;
+  late final String? description;
+
+  late List<_TempStudentGrade> _students;
+  late List<GroupActivity> _groups;
+
+  @override
+  void initState() {
+    super.initState();
+    isGroupWork = widget.activity.isGroupWork;
+    maxPoints = widget.activity.points;
+    description = widget.activity.description;
+
+    if (isGroupWork) {
+      _groups = widget.activity.groups.map((g) => g.copyWith()).toList();
+    } else {
+      final total = widget.activity.totalStudents;
+      final graded = widget.activity.studentsGraded;
+      _students = List.generate(total, (i) {
+        final has = i < graded;
+        return _TempStudentGrade(
+          name: 'Estudiante ${i + 1}',
+          grade: has ? (maxPoints * 0.7) : null,
+        );
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // resumen
+    int approved = 0;
+    int failed = 0;
+    int pending = 0;
+
+    if (isGroupWork) {
+      for (final g in _groups) {
+        if (g.grade == null) {
+          pending++;
+        } else if (g.grade! >= maxPoints * 0.7) {
+          approved++;
+        } else {
+          failed++;
+        }
+      }
+    } else {
+      approved = _students
+          .where((s) => s.grade != null && s.grade! >= maxPoints * 0.7)
+          .length;
+      failed = _students
+          .where((s) => s.grade != null && s.grade! < maxPoints * 0.7)
+          .length;
+      pending = _students.where((s) => s.grade == null).length;
+    }
+
+    return WillPopScope(
+      onWillPop: () async {
+        _returnData();
+        return true;
+      },
+      child: SafeArea(
+        top: false,
+        child: Container(
+          color: Colors.white,
+          child: Column(
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 46,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        _returnData();
+                        Navigator.pop(context);
+                      },
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.black),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        widget.activity.name,
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w900,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    if (description != null && description!.trim().isNotEmpty)
+                      _InfoBlock(
+                        title: 'Descripción',
+                        child: Text(
+                          description!,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            height: 1.3,
+                          ),
+                        ),
+                      ),
+                    _InfoBlock(
+                      title: 'Detalles',
+                      child: Text(
+                        '${widget.activity.subject} • ${widget.activity.grade} ${widget.activity.section} • ${_fmtDate(widget.activity.date)}',
+                        style: const TextStyle(
+                            fontSize: 14, color: Colors.black54),
+                      ),
+                    ),
+                    if (!isGroupWork)
+                      _InfoBlock(
+                        title: 'Notas',
+                        child: Column(
+                          children: List.generate(_students.length, (i) {
+                            final s = _students[i];
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 6.0),
+                              child: StudentGradeRow(
+                                id: i + 1,
+                                name: s.name,
+                                grade: s.grade == null
+                                    ? null
+                                    : (s.grade! / maxPoints) * 100.0,
+                                onChanged: (text) {
+                                  final asDouble = double.tryParse(
+                                      text.replaceAll(',', '.'));
+                                  if (asDouble == null) return;
+                                  final pct = asDouble.clamp(0, 100);
+                                  final pts = (pct / 100.0) * maxPoints;
+                                  setState(() {
+                                    _students[i] =
+                                        _students[i].copyWith(grade: pts);
+                                  });
+                                },
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                    if (isGroupWork)
+                      ..._groups.asMap().entries.map((entry) {
+                        final idx = entry.key;
+                        final g = entry.value;
+                        return _InfoBlock(
+                          title: 'Grupo ${idx + 1}',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                g.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              if (g.members.isEmpty)
+                                const Text(
+                                  'Sin integrantes',
+                                  style: TextStyle(
+                                      color: Colors.black45, fontSize: 13),
+                                )
+                              else
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: g.members
+                                      .map(
+                                        (m) => Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF0F1F3),
+                                            borderRadius:
+                                                BorderRadius.circular(999),
+                                          ),
+                                          child: Text(
+                                            m,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w600),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                ),
+                              const SizedBox(height: 10),
+                              StudentGradeRow(
+                                id: idx + 1,
+                                name: 'Nota del grupo',
+                                grade: g.grade == null
+                                    ? null
+                                    : (g.grade! / maxPoints) * 100.0,
+                                onChanged: (text) {
+                                  final asDouble = double.tryParse(
+                                      text.replaceAll(',', '.'));
+                                  if (asDouble == null) return;
+                                  final pct = asDouble.clamp(0, 100);
+                                  final pts = (pct / 100.0) * maxPoints;
+                                  setState(() {
+                                    _groups[idx] = g.copyWith(grade: pts);
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    const SizedBox(height: 14),
+                    Center(
+                      child: Text(
+                        'Aprobados: $approved • Reprobados: $failed • Pendientes: $pending',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, color: Colors.black54),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _returnData() {
+    if (isGroupWork) {
+      final graded = _groups.where((g) => g.grade != null).toList();
+      final hasPending = _groups.any((g) => g.grade == null);
+      final avg = graded.isEmpty
+          ? null
+          : graded.fold<double>(0, (s, g) => s + (g.grade ?? 0)) /
+              graded.length;
+
+      final updated = widget.activity.copyWith(
+        status: hasPending ? 'grading' : 'completed',
+        studentsGraded: graded.length, // grupos “calificados”
+        averageGrade: avg,
+        groups: _groups,
+      );
+      Navigator.pop(context, updated);
+    } else {
+      final graded = _students.where((s) => s.grade != null).toList();
+      final pending = _students.where((s) => s.grade == null).length;
+      final avg = graded.isEmpty
+          ? null
+          : graded.fold<double>(0, (s, g) => s + (g.grade ?? 0)) /
+              graded.length;
+
+      final updated = widget.activity.copyWith(
+        status: pending == 0 ? 'completed' : 'grading',
+        studentsGraded: graded.length,
+        averageGrade: avg,
+      );
+      Navigator.pop(context, updated);
+    }
+  }
+}
+
+/// =========================================================
+/// 5. ayuditas visuales
+/// =========================================================
 class _StatBox extends StatelessWidget {
   final String title;
   final String value;
@@ -520,23 +1289,22 @@ class _StatBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F5F7),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE6E7EA)),
+        color: const Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           Text(value,
               style:
-                  const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
           Text(title,
               style: const TextStyle(
                   fontSize: 13,
                   color: Colors.black54,
-                  fontWeight: FontWeight.w700)),
+                  fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -658,16 +1426,20 @@ class _ProgressLine extends StatelessWidget {
           Container(height: 8, color: const Color(0xFFE7E8EB)),
           FractionallySizedBox(
             widthFactor: ratio.clamp(0, 1),
-            child: Container(height: 8, color: Colors.black),
+            child: Container(
+              height: 8,
+              color: Colors.black,
+            ),
           ),
           Positioned.fill(
             child: Center(
               child: Text(
                 '$pct%',
                 style: const TextStyle(
-                    fontSize: 11,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900),
+                  fontSize: 11,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
@@ -700,369 +1472,39 @@ class _IconSquareButton extends StatelessWidget {
   }
 }
 
-/// ---------- Bottom sheet: Crear / Editar actividad ----------
-class _CreateEditActivitySheet extends StatefulWidget {
-  final Activity? initial;
-  final List<String> subjects;
-  final List<String> grades;
-  final List<String> sections;
-  final List<String> periods;
-  final List<String> types;
-
-  const _CreateEditActivitySheet({
-    this.initial,
-    required this.subjects,
-    required this.grades,
-    required this.sections,
-    required this.periods,
-    required this.types,
-  });
-
-  @override
-  State<_CreateEditActivitySheet> createState() =>
-      _CreateEditActivitySheetState();
-}
-
-class _CreateEditActivitySheetState extends State<_CreateEditActivitySheet> {
-  final _nameCtrl = TextEditingController();
-  final _pointsCtrl = TextEditingController();
-  String? subject;
-  String? grade;
-  String? section;
-  String? period;
-  String? type;
-  DateTime? date;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.initial != null) {
-      final a = widget.initial!;
-      _nameCtrl.text = a.name;
-      _pointsCtrl.text = a.points.toString();
-      subject = a.subject;
-      grade = a.grade;
-      section = a.section;
-      period = a.period;
-      type = a.type;
-      date = a.date;
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _pointsCtrl.dispose();
-    super.dispose();
-  }
+class _InfoBlock extends StatelessWidget {
+  final String title;
+  final Widget child;
+  const _InfoBlock({required this.title, required this.child});
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = widget.initial != null;
-
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(isEdit ? 'Editar Actividad' : 'Nueva Actividad',
-              textAlign: TextAlign.center,
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 16),
-          const Text('Nombre',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _nameCtrl,
-            decoration: _inputDecoration('Ej. Examen Parcial - Fracciones'),
-            textInputAction: TextInputAction.next,
-          ),
-          const SizedBox(height: 14),
-          SelectField<String>(
-            label: 'Materia',
-            placeholder: 'Selecciona una materia',
-            value: subject,
-            items: widget.subjects,
-            itemLabel: (e) => e,
-            onSelected: (e) => setState(() => subject = e),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: SelectField<String>(
-                  label: 'Grado',
-                  placeholder: 'Grado',
-                  value: grade,
-                  items: widget.grades,
-                  itemLabel: (e) => e,
-                  onSelected: (e) => setState(() => grade = e),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SelectField<String>(
-                  label: 'Sección',
-                  placeholder: 'Sección',
-                  value: section,
-                  items: widget.sections,
-                  itemLabel: (e) => e,
-                  onSelected: (e) => setState(() => section = e),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          SelectField<String>(
-            label: 'Periodo',
-            placeholder: 'Periodo',
-            value: period,
-            items: widget.periods,
-            itemLabel: (e) => e,
-            onSelected: (e) => setState(() => period = e),
-          ),
-          const SizedBox(height: 14),
-          SelectField<String>(
-            label: 'Tipo',
-            placeholder: 'Tipo de actividad',
-            value: type,
-            items: widget.types,
-            itemLabel: (e) => e,
-            onSelected: (e) => setState(() => type = e),
-          ),
-          const SizedBox(height: 14),
-          const Text('Puntos',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _pointsCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: false),
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(3)
-            ],
-            decoration: _inputDecoration('Ej. 25'),
-          ),
-          const SizedBox(height: 14),
-          SelectField<DateTime>(
-            label: 'Fecha',
-            placeholder: 'Selecciona fecha',
-            value: date,
-            items: _nextDates(365),
-            itemLabel: (d) => _fmtDate(d),
-            onSelected: (d) => setState(() => date = d),
-          ),
-          const SizedBox(height: 18),
-          BlackButton(
-            label: isEdit ? 'Guardar Cambios' : 'Crear Actividad',
-            onPressed: () {
-              if (_nameCtrl.text.trim().isEmpty ||
-                  subject == null ||
-                  grade == null ||
-                  section == null ||
-                  period == null ||
-                  type == null ||
-                  date == null ||
-                  _pointsCtrl.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Completa todos los campos')),
-                );
-                return;
-              }
-              final points = int.tryParse(_pointsCtrl.text) ?? 0;
-              final base = widget.initial ??
-                  Activity(
-                    id: DateTime.now().millisecondsSinceEpoch,
-                    name: _nameCtrl.text.trim(),
-                    subject: subject!,
-                    grade: grade!,
-                    section: section!,
-                    period: period!,
-                    type: type!,
-                    points: points,
-                    date: date!,
-                    status: 'pending',
-                    studentsGraded: 0,
-                    totalStudents: 28,
-                    averageGrade: null,
-                  );
-              final updated = base.copyWith(
-                name: _nameCtrl.text.trim(),
-                subject: subject!,
-                grade: grade!,
-                section: section!,
-                period: period!,
-                type: type!,
-                points: points,
-                date: date!,
-              );
-              Navigator.pop(context, updated);
-            },
-          ),
-        ],
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F6F7),
+        borderRadius: BorderRadius.circular(20),
       ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String hint) {
-    return InputDecoration(
-      hintText: hint,
-      filled: true,
-      fillColor: const Color(0xFFF4F5F7),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-    );
-  }
-
-  List<DateTime> _nextDates(int days) {
-    final now = DateTime.now();
-    return List.generate(days,
-        (i) => DateTime(now.year, now.month, now.day).add(Duration(days: i)));
-  }
-}
-
-/// ---------- Bottom sheet: Calificar/Ver notas ----------
-class _GradeActivitySheet extends StatefulWidget {
-  final Activity activity;
-  const _GradeActivitySheet({required this.activity});
-
-  @override
-  State<_GradeActivitySheet> createState() => _GradeActivitySheetState();
-}
-
-class _GradeActivitySheetState extends State<_GradeActivitySheet> {
-  // Mock de alumnos + nota en puntos (puedes traer de DB)
-  late List<_StudentGrade> grades;
-
-  @override
-  void initState() {
-    super.initState();
-    grades = List<_StudentGrade>.generate(
-      widget.activity.totalStudents,
-      (i) => _StudentGrade(
-        i + 1,
-        'Estudiante ${i + 1}',
-        value: i < widget.activity.studentsGraded
-            ? (widget.activity.points * 0.7)
-            : null,
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final approved = grades
-        .where((g) => (g.value ?? -1) >= (widget.activity.points * 0.7))
-        .length;
-    final failed = grades
-        .where((g) =>
-            g.value != null && (g.value ?? 0) < (widget.activity.points * 0.7))
-        .length;
-    final pending = grades.where((g) => g.value == null).length;
-
-    return SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        children: [
-          Center(
-            child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: Colors.black12,
-                    borderRadius: BorderRadius.circular(2))),
-          ),
-          const SizedBox(height: 10),
-          Text('Calificar: ${widget.activity.name}',
-              textAlign: TextAlign.center,
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 12),
-          AppCard(
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '${widget.activity.subject} · ${widget.activity.grade} ${widget.activity.section} · ${_fmtDate(widget.activity.date)}',
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    BlackButton(
-                      label: 'Guardar',
-                      icon: Icons.save_outlined,
-                      onPressed: () {
-                        final graded =
-                            grades.where((g) => g.value != null).toList();
-                        final avg = graded.isEmpty
-                            ? null
-                            : graded.fold<double>(
-                                    0, (s, g) => s + (g.value ?? 0)) /
-                                graded.length;
-                        final updated = widget.activity.copyWith(
-                          status: pending == 0 ? 'completed' : 'grading',
-                          studentsGraded: graded.length,
-                          averageGrade: avg,
-                        );
-                        Navigator.pop(context, updated);
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Divider(height: 1),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: grades.length,
-                  separatorBuilder: (_, __) =>
-                      const Divider(height: 1, color: Color(0xFFECEDEF)),
-                  itemBuilder: (_, i) {
-                    final g = grades[i];
-                    return StudentGradeRow(
-                      id: g.id,
-                      name: g.name,
-                      grade: g.value == null
-                          ? null
-                          : ((g.value! / widget.activity.points) * 100)
-                              .clamp(0, 100),
-                      onChanged: (t) {
-                        final v = double.tryParse(t.replaceAll(',', '.'));
-                        if (v == null) return;
-                        final pct = v.clamp(0, 100);
-                        final pts = (pct / 100.0) * widget.activity.points;
-                        setState(() => grades[i] = g.copyWith(value: pts));
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 8),
-                SummaryRow(
-                    approved: approved, failed: failed, pending: pending),
-              ],
-            ),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            child,
+          ],
+        ),
       ),
     );
   }
 }
 
-/// ---------- helpers ----------
+/// helper
 String _fmtDate(DateTime d) {
   final dd = d.day.toString().padLeft(2, '0');
   final mm = d.month.toString().padLeft(2, '0');
@@ -1070,12 +1512,12 @@ String _fmtDate(DateTime d) {
   return '$yyyy-$mm-$dd';
 }
 
-class _StudentGrade {
-  final int id;
+/// modelo temporal solo para la pantalla de calificar
+class _TempStudentGrade {
   final String name;
-  final double? value; // puntos
-  _StudentGrade(this.id, this.name, {this.value});
+  final double? grade;
+  _TempStudentGrade({required this.name, this.grade});
 
-  _StudentGrade copyWith({double? value}) =>
-      _StudentGrade(id, name, value: value ?? this.value);
+  _TempStudentGrade copyWith({double? grade}) =>
+      _TempStudentGrade(name: name, grade: grade);
 }

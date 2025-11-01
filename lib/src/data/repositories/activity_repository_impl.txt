@@ -1,0 +1,59 @@
+import '../../domain/entities/activity.dart';
+import '../../domain/repositories/activity_repository.dart';
+import 'package:anunciacion/src/data/repositories/models/activity_model.dart';
+
+class ActivityRepositoryImpl implements ActivityRepository {
+  final List<ActivityModel> _mockData = [];
+
+  @override
+  Future<List<Activity>> getAll() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return _mockData;
+  }
+
+  @override
+  Future<Activity> create(Activity activity) async {
+    final newActivity = ActivityModel(
+      id: _mockData.length + 1,
+      name: activity.name,
+      subject: activity.subject,
+      grade: activity.grade,
+      section: activity.section,
+      period: activity.period,
+      type: activity.type,
+      points: activity.points,
+      date: activity.date,
+      status: 'pending',
+      studentsGraded: 0,
+      totalStudents: activity.totalStudents,
+      averageGrade: null,
+    );
+    _mockData.add(newActivity);
+    return newActivity;
+  }
+
+  @override
+  Future<void> delete(int id) async {
+    _mockData.removeWhere((a) => a.id == id);
+  }
+
+  @override
+  Future<Activity> update(Activity activity) async {
+    final index = _mockData.indexWhere((a) => a.id == activity.id);
+    if (index != -1) {
+      _mockData[index] = activity as ActivityModel;
+      return _mockData[index];
+    }
+    throw Exception('Activity not found');
+  }
+
+  @override
+  Future<Activity> grade(Activity activity) async {
+    final index = _mockData.indexWhere((a) => a.id == activity.id);
+    if (index != -1) {
+      _mockData[index] = activity as ActivityModel;
+      return _mockData[index];
+    }
+    throw Exception('Activity not found');
+  }
+}

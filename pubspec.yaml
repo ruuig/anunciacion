@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   google_fonts: ^6.1.0
+  get_it: ^7.6.7
 
   # Base de datos - PostgreSQL
   postgres: ^3.4.8

@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
-import '../widgets/widgets.dart';
+
+// entidad
+import 'package:anunciacion/src/domain/entities/activity.dart';
+
+// páginas que ya hicimos
+import 'package:anunciacion/src/presentation/screens/actividades/create_edit_activity_page.dart';
+import 'package:anunciacion/src/presentation/screens/actividades/grade_activity_page.dart';
+
+// tus widgets compartidos
+import 'package:anunciacion/src/presentation/widgets/widgets.dart';
 
 class ActivitiesTabBody extends StatefulWidget {
   final String userRole;
@@ -16,123 +25,210 @@ class ActivitiesTabBody extends StatefulWidget {
 }
 
 class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
-  final subjects = ['Matemáticas', 'Español', 'Ciencias Naturales'];
-  final grades = ['1ro Primaria', '2do Primaria', '3ro Primaria'];
-  final sections = ['A', 'B', 'C'];
-  final periods = ['Primer Bimestre', 'Segundo Bimestre'];
-  final types = ['Examen', 'Tarea', 'Proyecto'];
+  // catálogos base (luego se pueden traer del backend)
+  final List<String> _subjects = const [
+    'Matemáticas',
+    'Español',
+    'Ciencias Naturales',
+  ];
+  final List<String> _gradesCatalog = const [
+    '1ro Primaria',
+    '2do Primaria',
+    '3ro Primaria',
+    '4to Primaria',
+  ];
+  final List<String> _sections = const ['A', 'B', 'C'];
+  final List<String> _periodsCatalog = const [
+    'Primer Bimestre',
+    'Segundo Bimestre',
+  ];
+  final List<String> _types = const ['Examen', 'Tarea', 'Proyecto'];
 
-  List<Map<String, dynamic>> activities = [
-    {
-      'name': 'Examen Parcial - Fracciones',
-      'subject': 'Matemáticas',
-      'grade': '3ro Primaria',
-      'section': 'A',
-      'period': 'Primer Bimestre',
-      'type': 'Examen',
-      'points': 25,
-      'date': '2025-02-15',
-      'status': 'completed',
-      'studentsGraded': 24,
-      'totalStudents': 28,
-      'averageGrade': 78.5,
-    },
-    {
-      'name': 'Tarea - Ejercicios de suma y resta',
-      'subject': 'Matemáticas',
-      'grade': '3ro Primaria',
-      'section': 'A',
-      'period': 'Primer Bimestre',
-      'type': 'Tarea',
-      'points': 10,
-      'date': '2025-02-10',
-      'status': 'completed',
-      'studentsGraded': 28,
-      'totalStudents': 28,
-      'averageGrade': 85.2,
-    },
-    {
-      'name': 'Proyecto - Sistema Solar',
-      'subject': 'Ciencias Naturales',
-      'grade': '4to Primaria',
-      'section': 'B',
-      'period': 'Primer Bimestre',
-      'type': 'Proyecto',
-      'points': 20,
-      'date': '2025-02-20',
-      'status': 'pending',
-      'studentsGraded': 0,
-      'totalStudents': 25,
-      'averageGrade': null,
-    },
+  // lista mock de actividades **usando la entidad**
+  List<Activity> _activities = [
+    Activity(
+      id: 1,
+      name: 'Examen Parcial - Fracciones',
+      description: 'Evaluación de fracciones y operaciones básicas',
+      subject: 'Matemáticas',
+      grade: '3ro Primaria',
+      section: 'A',
+      period: 'Primer Bimestre',
+      type: 'Examen',
+      points: 25,
+      date: DateTime(2025, 2, 15),
+      status: 'completed',
+      studentsGraded: 24,
+      totalStudents: 28,
+      averageGrade: 78.5,
+      isGroupWork: false,
+      groups: const [],
+    ),
+    Activity(
+      id: 2,
+      name: 'Tarea - Ejercicios de suma y resta',
+      description: 'Tarea corta de refuerzo',
+      subject: 'Matemáticas',
+      grade: '3ro Primaria',
+      section: 'A',
+      period: 'Primer Bimestre',
+      type: 'Tarea',
+      points: 10,
+      date: DateTime(2025, 2, 10),
+      status: 'completed',
+      studentsGraded: 28,
+      totalStudents: 28,
+      averageGrade: 85.2,
+      isGroupWork: false,
+      groups: const [],
+    ),
+    Activity(
+      id: 3,
+      name: 'Proyecto - Sistema Solar',
+      description: 'Cada grupo debe exponer un planeta',
+      subject: 'Ciencias Naturales',
+      grade: '4to Primaria',
+      section: 'B',
+      period: 'Primer Bimestre',
+      type: 'Proyecto',
+      points: 20,
+      date: DateTime(2025, 2, 20),
+      status: 'pending',
+      studentsGraded: 0,
+      totalStudents: 25,
+      averageGrade: null,
+      isGroupWork: true,
+      groups: [
+        ActivityGroup(name: 'Grupo 1', members: ['Ana', 'Carlos']),
+        ActivityGroup(name: 'Grupo 2', members: ['Diego', 'Sofía', 'Luis']),
+      ],
+    ),
   ];
 
-  void _createActivity() {
-    try {
+  // --------------------------------------------------
+  // ACCIONES
+  // --------------------------------------------------
+
+  Future<void> _createActivity() async {
+    final created = await Navigator.push<Activity>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateEditActivityPage(
+          name: 'Nueva actividad',
+          grades: _gradesCatalog,
+          periods: _periodsCatalog,
+          subjects: _subjects,
+          sections: _sections,
+        ),
+      ),
+    );
+
+    if (created != null) {
+      setState(() {
+        _activities.add(
+          created.copyWith(
+            status: 'pending',
+            studentsGraded: 0,
+            totalStudents: created.totalStudents == 0
+                ? 28
+                : created.totalStudents, // default
+            averageGrade: null,
+          ),
+        );
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Funcionalidad de creación en desarrollo')),
+        const SnackBar(content: Text('Actividad creada')),
       );
-    } catch (e) {
-      // Handle any errors silently to prevent app freezing
-      print('Error creating activity: $e');
     }
   }
 
-  void _editActivity(Map<String, dynamic> activity) {
-    try {
+  Future<void> _editActivity(Activity activity) async {
+    final updated = await Navigator.push<Activity>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateEditActivityPage(
+          name: 'Editar actividad',
+          initial: activity,
+          grades: _gradesCatalog,
+          periods: _periodsCatalog,
+          subjects: _subjects,
+          sections: _sections,
+        ),
+      ),
+    );
+
+    if (updated != null) {
+      setState(() {
+        _activities = _activities.map((a) {
+          if (a.id == updated.id) return updated;
+          return a;
+        }).toList();
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Editar: ${activity['name'] ?? 'Actividad'}')),
+        const SnackBar(content: Text('Actividad actualizada')),
       );
-    } catch (e) {
-      print('Error editing activity: $e');
     }
   }
 
-  void _deleteActivity(Map<String, dynamic> activity) {
-    // Show confirmation dialog before deleting
+  void _deleteActivity(Activity activity) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Eliminar Actividad'),
-          content: Text('¿Estás seguro de que quieres eliminar "${activity['name'] ?? 'esta actividad'}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                try {
-                  setState(() {
-                    activities.remove(activity);
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Actividad eliminada')),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Error al eliminar actividad')),
-                  );
-                  print('Error deleting activity: $e');
-                }
-              },
-              child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
+      builder: (_) => AlertDialog(
+        title: const Text('Eliminar Actividad'),
+        content: Text('¿Seguro que quieres eliminar "${activity.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              setState(() {
+                _activities.removeWhere((a) => a.id == activity.id);
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Actividad eliminada')),
+              );
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 
+  Future<void> _openGrade(Activity activity) async {
+    final graded = await Navigator.push<Activity>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GradeActivityPage(
+          name: 'Calificar Actividad',
+          initial: activity,
+          grades: _gradesCatalog,
+          periods: _periodsCatalog,
+        ),
+      ),
+    );
+
+    if (graded != null) {
+      setState(() {
+        _activities = _activities.map((a) {
+          if (a.id == graded.id) return graded;
+          return a;
+        }).toList();
+      });
+    }
+  }
+
+  // --------------------------------------------------
+  // UI
+  // --------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final filtered = activities;
-    final completed = filtered.where((a) => a['status'] == 'completed').length;
-    final pending = filtered.where((a) => a['status'] == 'pending').length;
-    final totalPoints =
-        filtered.fold<int>(0, (sum, a) => sum + ((a['points'] as int?) ?? 0));
+    final completed = _activities.where((a) => a.status == 'completed').length;
+    final pending = _activities.where((a) => a.status == 'pending').length;
+    final totalPoints = _activities.fold<int>(0, (sum, a) => sum + a.points);
 
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
@@ -147,51 +243,55 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Gestión de Actividades',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                    const Text(
+                      'Gestión de Actividades',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                    ),
                     const SizedBox(height: 8),
                     const Text(
                       'Planifica y califica actividades académicas',
                       style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.black54,
-                          fontWeight: FontWeight.w600),
+                        fontSize: 14,
+                        color: Colors.black54,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     BlackButton(
-                      label: 'Crear Actividad',
-                      icon: Icons.add,
+                      label: 'Crear actividad',
+                      icon: Icons.add_rounded,
                       onPressed: _createActivity,
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
-                          child: _StatBox(title: 'Completadas', value: '$completed'),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatBox(title: 'Pendientes', value: '$pending'),
+                          child: _StatBox(
+                              title: 'Completadas', value: '$completed'),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child:
-                              _StatBox(title: 'Puntos Total', value: '$totalPoints'),
+                              _StatBox(title: 'Pendientes', value: '$pending'),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _StatBox(
+                              title: 'Puntos Total', value: '$totalPoints'),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-
               const SizedBox(height: 16),
 
-              // LISTA DE ACTIVIDADES
-              if (activities.isEmpty)
-                EmptyState(
+              if (_activities.isEmpty)
+                const EmptyState(
                   title: 'No hay actividades',
                   description: 'Crea tu primera actividad para comenzar',
-                  icon: const Icon(Icons.assignment_outlined,
+                  icon: Icon(Icons.assignment_outlined,
                       size: 48, color: Colors.black45),
                 )
               else
@@ -206,56 +306,74 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ...activities.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final a = entry.value;
-                      final progress =
-                          (a['studentsGraded'] as int?)?.toDouble() ?? 0.0 / ((a['totalStudents'] as int?) ?? 1).toDouble();
-                      final avg = a['averageGrade'] as double?;
-                      final done = a['status'] == 'completed';
-
+                    ..._activities.map((a) {
+                      final progress = a.totalStudents == 0
+                          ? 0.0
+                          : a.studentsGraded / a.totalStudents;
                       return Padding(
-                        key: ValueKey('${a['name']}_${index}'), // Add more specific key
                         padding: const EdgeInsets.only(bottom: 12),
                         child: AppCard(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Nombre + estado
+                              // título
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      a['name'] ?? 'Sin nombre',
+                                      a.name,
                                       style: const TextStyle(
-                                          fontSize: 18, fontWeight: FontWeight.w800),
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  _StatusBadge(status: a['status'] ?? 'pending'),
+                                  _StatusBadge(status: a.status),
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              Text('${a['subject']} • ${a['grade']} ${a['section']}',
-                                  style: const TextStyle(
-                                      fontSize: 14, color: Colors.black54)),
+                              Text(
+                                '${a.subject} • ${a.grade} ${a.section}${a.isGroupWork ? ' • Trabajo grupal' : ''}',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                              if (a.description != null &&
+                                  a.description!.trim().isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6.0),
+                                  child: Text(
+                                    a.description!,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                                ),
                               const SizedBox(height: 10),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('${a['points']} pts  |  ${a['date']}',
+                                  Text(
+                                    '${a.points} pts  |  ${_fmtDate(a.date)}',
+                                    style: const TextStyle(
+                                        fontSize: 14, color: Colors.black54),
+                                  ),
+                                  if (a.averageGrade != null)
+                                    Text(
+                                      'Promedio: ${a.averageGrade!.toStringAsFixed(1)}',
                                       style: const TextStyle(
-                                          fontSize: 14, color: Colors.black54)),
-                                  if (avg != null)
-                                    Text('Promedio: ${avg.toStringAsFixed(1)}',
-                                        style:
-                                            const TextStyle(fontWeight: FontWeight.w700)),
+                                          fontWeight: FontWeight.w700),
+                                    ),
                                 ],
                               ),
                               const SizedBox(height: 10),
-
-                              // Barra de progreso
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
                                 child: LinearProgressIndicator(
@@ -267,13 +385,13 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Progreso: ${a['studentsGraded']}/${a['totalStudents']} estudiantes',
-                                style:
-                                    const TextStyle(fontSize: 13, color: Colors.black54),
+                                'Progreso: ${a.studentsGraded}/${a.totalStudents} estudiantes',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black54,
+                                ),
                               ),
                               const SizedBox(height: 10),
-
-                              // Botones acción
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
@@ -289,18 +407,10 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                                   ),
                                   const SizedBox(width: 8),
                                   BlackButton(
-                                    label: done ? 'Ver Notas' : 'Calificar',
-                                    onPressed: () {
-                                      try {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                              content: Text(
-                                                  '${done ? 'Ver' : 'Calificar'} ${a['name'] ?? 'actividad'}')),
-                                        );
-                                      } catch (e) {
-                                        print('Error showing snackbar: $e');
-                                      }
-                                    },
+                                    label: a.status == 'completed'
+                                        ? 'Ver notas'
+                                        : 'Calificar',
+                                    onPressed: () => _openGrade(a),
                                   ),
                                 ],
                               ),
@@ -308,7 +418,7 @@ class _ActivitiesTabBodyState extends State<ActivitiesTabBody> {
                           ),
                         ),
                       );
-                    }),
+                    }).toList(),
                   ],
                 ),
             ],
@@ -334,15 +444,18 @@ class _StatBox extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(value,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: 4),
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.black54,
-                  fontWeight: FontWeight.w600)),
+          Text(
+            title,
+            style: const TextStyle(
+                fontSize: 13,
+                color: Colors.black54,
+                fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
@@ -379,8 +492,10 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration:
-          BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Text(
         text,
         style:
@@ -388,4 +503,8 @@ class _StatusBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+String _fmtDate(DateTime d) {
+  return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }

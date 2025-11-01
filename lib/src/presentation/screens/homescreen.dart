@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'package:anunciacion/src/presentation/screens/StudentsPage.dart';
 import 'package:anunciacion/src/presentation/screens/config_screen.dart';
+import 'package:anunciacion/src/presentation/screens/pagos/payments_screen.dart';
 import 'package:anunciacion/src/presentation/screens/qr_screen.dart';
+import 'package:anunciacion/src/presentation/screens/reports/reports_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:anunciacion/src/presentation/widgets/CustomCard.dart';
 import 'package:anunciacion/src/presentation/widgets/bottomBar.dart';
@@ -87,13 +89,27 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
                     imageUrl: 'assets/descarga.png',
                     title: 'Pagos',
                     description: 'Cuotas, estados y comprobantes',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PaymentsScreen(),
+                        ),
+                      );
+                    },
                   ),
                   CustomCard(
                     imageUrl: 'assets/reportes.png',
                     title: 'Reportes',
                     description: 'Promedios y boletas por grado',
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ReportsScreen(),
+                        ),
+                      );
+                    },
                   ),
                   CustomCard(
                     imageUrl: 'assets/estudiantes.png',

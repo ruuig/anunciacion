@@ -1,0 +1,187 @@
+class StatBox extends StatelessWidget {
+  final String title;
+  final String value;
+  const _StatBox({required this.title, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F5F7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE6E7EA)),
+      ),
+      child: Column(
+        children: [
+          Text(value,
+              style:
+                  const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          Text(title,
+              style: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.black54,
+                  fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
+
+class _TypeIcon extends StatelessWidget {
+  final String type;
+  const _TypeIcon({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    IconData icon;
+    switch (type) {
+      case 'Examen':
+        icon = Icons.fact_check_outlined;
+        break;
+      case 'Tarea':
+        icon = Icons.menu_book_outlined;
+        break;
+      case 'Proyecto':
+        icon = Icons.track_changes_outlined;
+        break;
+      case 'Laboratorio':
+        icon = Icons.science_outlined;
+        break;
+      case 'Presentación':
+        icon = Icons.present_to_all_outlined;
+        break;
+      case 'Quiz':
+        icon = Icons.quiz_outlined;
+        break;
+      default:
+        icon = Icons.menu_book_outlined;
+    }
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF3FF),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, color: Colors.black87),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  final String status;
+  const _StatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    String text;
+    switch (status) {
+      case 'completed':
+        text = 'Completada';
+        break;
+      case 'pending':
+        text = 'Pendiente';
+        break;
+      case 'grading':
+        text = 'Calificando';
+        break;
+      default:
+        text = 'Sin estado';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(text,
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w800)),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  const _InfoRow({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.black54),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            text,
+            style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+                fontWeight: FontWeight.w700),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ProgressLine extends StatelessWidget {
+  final double ratio; // 0..1
+  final bool done;
+  const _ProgressLine({required this.ratio, required this.done});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = (ratio.clamp(0, 1) * 100).round();
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: Stack(
+        children: [
+          Container(height: 8, color: const Color(0xFFE7E8EB)),
+          FractionallySizedBox(
+            widthFactor: ratio.clamp(0, 1),
+            child: Container(height: 8, color: Colors.black),
+          ),
+          Positioned.fill(
+            child: Center(
+              child: Text(
+                '$pct%',
+                style: const TextStyle(
+                    fontSize: 11,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IconSquareButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onPressed;
+  const _IconSquareButton({required this.icon, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
+      ),
+    );
+  }
+}
