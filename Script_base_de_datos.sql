@@ -110,6 +110,8 @@ CREATE TABLE IF NOT EXISTS materias (
 -- Estudiantes
 CREATE TABLE IF NOT EXISTS estudiantes (
     id SERIAL PRIMARY KEY,
+    codigo VARCHAR(20) UNIQUE NOT NULL,  -- Código único del estudiante (ej: C716KYD)
+    dpi VARCHAR(20) UNIQUE NOT NULL,     -- DPI/CUI del estudiante
     nombre VARCHAR(200) NOT NULL,
     fecha_nacimiento DATE NOT NULL,
     genero VARCHAR(20),
@@ -284,6 +286,23 @@ CREATE TABLE IF NOT EXISTS auditoria (
     user_agent VARCHAR(500),
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Agregar columna codigo a la tabla estudiantes
+-- El código es único y obligatorio (ejemplo: C716KYD)
+
+ALTER TABLE estudiantes 
+ADD COLUMN codigo VARCHAR(20) UNIQUE;
+
+
+ALTER TABLE estudiantes 
+ALTER COLUMN codigo SET NOT NULL;
+
+-- Crear índice para búsquedas rápidas por código
+CREATE INDEX idx_estudiantes_codigo ON estudiantes(codigo);
+
+-- Comentario descriptivo
+COMMENT ON COLUMN estudiantes.codigo IS 'Código único del estudiante asignado por el gobierno (ejemplo: C716KYD)';
+
 
 -- =====================================================
 -- 8. DATOS INICIALES

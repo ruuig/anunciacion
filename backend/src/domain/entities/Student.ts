@@ -1,6 +1,7 @@
 export interface Student {
   id: number;
-  dpi: string;
+  codigo: string;  // Código único del estudiante
+  dpi: string;     // DPI/CUI del estudiante
   name: string;
   birthDate: Date;
   gender?: string | null;
@@ -8,8 +9,7 @@ export interface Student {
   phone?: string | null;
   email?: string | null;
   avatarUrl?: string | null;
-  gradeId: number;
-  sectionId: number;
+  gradeId: number;  // ID del grado que incluye la sección (ej: "Primero A")
   enrollmentDate: Date;
   status: string;
   createdAt: Date;

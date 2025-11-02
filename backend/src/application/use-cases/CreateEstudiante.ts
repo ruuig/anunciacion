@@ -4,34 +4,34 @@ export class CreateEstudiante {
   constructor(private readonly repo: EstudiantesRepository) {}
 
   async execute(input: {
+    codigo: string;
+    dpi: string;
     name: string;
     birthDate: string;
     gender?: string | null;
     address?: string | null;
     phone?: string | null;
     email?: string | null;
+    avatarUrl?: string | null;
     gradeId: number;
-    sectionId: number;
     enrollmentDate?: string;
+    status?: string;
   }) {
-    const now = new Date();
-    const enrollment = input.enrollmentDate ? new Date(input.enrollmentDate) : now;
+    const enrollment = input.enrollmentDate ? new Date(input.enrollmentDate) : new Date();
 
     return this.repo.create({
-      id: 0,
+      codigo: input.codigo,
+      dpi: input.dpi,
       name: input.name,
       birthDate: new Date(input.birthDate),
       gender: input.gender ?? null,
       address: input.address ?? null,
       phone: input.phone ?? null,
       email: input.email ?? null,
-      avatarUrl: null,
+      avatarUrl: input.avatarUrl ?? null,
       gradeId: input.gradeId,
-      sectionId: input.sectionId,
       enrollmentDate: enrollment,
-      status: "activo",
-      createdAt: now,
-      updatedAt: now
+      status: input.status ?? "activo"
     });
   }
 }
