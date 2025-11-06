@@ -5,6 +5,9 @@ import estudiantesRoutes from "./estudiantesRoutes";
 import parentsRoutes from "./parentsRoutes";
 import usersRoutes from "./usersRoutes";
 import subjectsRoutes from "./subjectsRoutes";
+import gradeRoutes from "./gradeRoutes";
+import studentRoutes from "./studentRoutes";
+import activitiesRoutes from "./activitiesRoutes";
 
 export function registerRoutes(app: Express) {
   app.use("/api/auth", authRoutes);
@@ -13,4 +16,7 @@ export function registerRoutes(app: Express) {
   app.use("/api/padres", parentsRoutes);
   app.use("/users", usersRoutes);
   app.use("/api/materias", subjectsRoutes);
+  app.use("/grades", gradeRoutes);
+  app.use("/students", studentRoutes);
+  app.use("/api/activities", activitiesRoutes);
 }

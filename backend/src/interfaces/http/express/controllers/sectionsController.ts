@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { GetSectionsByGrade } from "../../../../application/use-cases/GetSectionsByGrade.js";
-import { PostgresSectionRepository } from "../../../../infrastructure/repositories/PostgresSectionRepository.js";
+import { GetSectionsByGrade } from "../../../../application/use-cases/GetSectionsByGrade";
+import { PostgresSectionRepository } from "../../../../infrastructure/repositories/PostgresSectionRepository";
 
 const sectionsUseCase = new GetSectionsByGrade(new PostgresSectionRepository());
 

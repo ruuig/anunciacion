@@ -201,4 +201,23 @@ export class PostgresSubjectRepository {
       [gradeId, subjectId, anoAcademico]
     );
   }
+
+  // Obtener materias que un docente imparte (basado en materias_docentes)
+  // No depende del grado - el docente da estas materias en todos sus grados asignados
+  async getTeacherSubjects(teacherId: number): Promise<any[]> {
+    const { rows } = await query<any>(
+      `SELECT DISTINCT
+        m.id,
+        m.nombre as name,
+        m.codigo,
+        m.descripcion
+       FROM materias m
+       INNER JOIN materias_docentes md ON m.id = md.materia_id
+       WHERE md.docente_id = $1 
+         AND md.activo = true
+       ORDER BY m.nombre`,
+      [teacherId]
+    );
+    return rows;
+  }
 }

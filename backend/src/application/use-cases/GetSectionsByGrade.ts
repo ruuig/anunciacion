@@ -1,5 +1,5 @@
-import { SectionRepository } from "../../domain/repositories/SectionRepository.js";
-import { Section } from "../../domain/entities/Section.js";
+import { SectionRepository } from "../../domain/repositories/SectionRepository";
+import { Section } from "../../domain/entities/Section";
 
 export class GetSectionsByGrade {
   constructor(private readonly sectionRepo: SectionRepository) {}

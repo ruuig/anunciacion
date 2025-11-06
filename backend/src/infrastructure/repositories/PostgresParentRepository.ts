@@ -1,6 +1,6 @@
 import { query } from "../../config/database";
-import { ParentRepository } from "../../domain/repositories/ParentRepository.js";
-import { Parent, ParentStudent } from "../../domain/entities/Parent.js";
+import { ParentRepository } from "../../domain/repositories/ParentRepository";
+import { Parent, ParentStudent } from "../../domain/entities/Parent";
 
 export class PostgresParentRepository implements ParentRepository {
   async create(parent: Omit<Parent, "id" | "createdAt" | "updatedAt">): Promise<Parent> {

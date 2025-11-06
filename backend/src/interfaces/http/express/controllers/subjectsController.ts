@@ -112,7 +112,7 @@ export async function getGradeSubjects(req: Request, res: Response, next: NextFu
 }
 
 // Remover materia de un grado
-export async function removeFromGrade(req: Request, res: Response, next: NextFunction) {
+export async function removeSubjectFromGrade(req: Request, res: Response, next: NextFunction) {
   try {
     const gradeId = parseInt(req.params.gradeId);
     const subjectId = parseInt(req.params.subjectId);
@@ -120,6 +120,20 @@ export async function removeFromGrade(req: Request, res: Response, next: NextFun
     await repository.removeFromGrade(gradeId, subjectId, anoAcademico);
     res.status(204).send();
   } catch (e) {
+    next(e);
+  }
+}
+
+export async function getTeacherSubjects(req: Request, res: Response, next: NextFunction) {
+  try {
+    const teacherId = parseInt(req.params.teacherId);
+    
+    console.log(`📚 Getting subjects for teacher ${teacherId}`);
+    const subjects = await repository.getTeacherSubjects(teacherId);
+    console.log(`✅ Found ${subjects.length} subjects`);
+    res.json(subjects);
+  } catch (e) {
+    console.error('❌ Error getting teacher subjects:', e);
     next(e);
   }
 }

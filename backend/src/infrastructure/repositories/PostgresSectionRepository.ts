@@ -1,6 +1,6 @@
-import { query } from "../../config/database.js";
-import { SectionRepository } from "../../domain/repositories/SectionRepository.js";
-import { Section } from "../../domain/entities/Section.js";
+import { query } from "../../config/database";
+import { SectionRepository } from "../../domain/repositories/SectionRepository";
+import { Section } from "../../domain/entities/Section";
 
 export class PostgresSectionRepository implements SectionRepository {
   async findByGradeId(gradeId: number): Promise<Section[]> {

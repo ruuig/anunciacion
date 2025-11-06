@@ -1,4 +1,4 @@
-import { Student } from "../entities/Student.js";
+import { Student } from "../entities/Student";
 
 export interface StudentRepository {
   create(student: Omit<Student, "id" | "createdAt" | "updatedAt">): Promise<Student>;

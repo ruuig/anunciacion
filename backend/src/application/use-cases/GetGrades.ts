@@ -1,5 +1,5 @@
-import { GradeRepository } from "../../domain/repositories/GradeRepository.js";
-import { Grade } from "../../domain/entities/Grade.js";
+import { GradeRepository } from "../../domain/repositories/GradeRepository";
+import { Grade } from "../../domain/entities/Grade";
 
 export class GetGrades {
   constructor(private readonly gradeRepo: GradeRepository) {}

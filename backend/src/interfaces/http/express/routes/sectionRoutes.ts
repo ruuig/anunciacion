@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { listSectionsByGrade } from "../controllers/sectionsController.js";
+import { listSectionsByGrade } from "../controllers/sectionsController";
 
 const router = Router();
 

@@ -1,6 +1,6 @@
-import { query } from "../../config/database.js";
-import { StudentRepository } from "../../domain/repositories/StudentRepository.js";
-import { Student } from "../../domain/entities/Student.js";
+import { query } from "../../config/database";
+import { StudentRepository } from "../../domain/repositories/StudentRepository";
+import { Student } from "../../domain/entities/Student";
 
 export class PostgresStudentRepository implements StudentRepository {
   async create(student: Omit<Student, "id" | "createdAt" | "updatedAt">): Promise<Student> {
