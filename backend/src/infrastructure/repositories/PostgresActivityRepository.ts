@@ -12,17 +12,19 @@ export class PostgresActivityRepository {
     materiaId: number;
     gradoId: number;
     docenteId: number;
-    periodo: string;
+    periodo: number;
     anoAcademico: number;
     ponderacion: number;
     fechaEntrega?: Date;
+    tipo?: string;
   }): Promise<Activity> {
     const { rows } = await query<any>(
       `INSERT INTO actividades (
         nombre, descripcion, materia_id, grado_id, docente_id, 
-        periodo, ano_academico, ponderacion, fecha_entrega, activo
+        periodo, ano_academico, ponderacion, fecha_entrega, tipo, 
+        puntos_maximos, activo
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true)
       RETURNING 
         id,
         nombre,
@@ -35,6 +37,8 @@ export class PostgresActivityRepository {
         ponderacion,
         fecha_entrega as "fechaEntrega",
         fecha_creacion as "fechaCreacion",
+        tipo,
+        puntos_maximos as "puntosMaximos",
         activo`,
       [
         data.nombre,
@@ -45,7 +49,9 @@ export class PostgresActivityRepository {
         data.periodo,
         data.anoAcademico,
         data.ponderacion,
-        data.fechaEntrega || null
+        data.fechaEntrega || null,
+        data.tipo || 'Tarea', // Valor por defecto
+        data.ponderacion // puntos_maximos = ponderacion
       ]
     );
     return rows[0];
@@ -54,7 +60,7 @@ export class PostgresActivityRepository {
   async getActivities(filters: {
     materiaId: number;
     gradoId: number;
-    periodo: string;
+    periodo: number;
     anoAcademico: number;
     docenteId?: number;
   }): Promise<Activity[]> {
@@ -207,7 +213,7 @@ export class PostgresActivityRepository {
   async getStudentActivityGrades(estudianteId: number, filters: {
     materiaId: number;
     gradoId: number;
-    periodo: string;
+    periodo: number;
     anoAcademico: number;
   }): Promise<ActivityGrade[]> {
     const { rows } = await query<any>(
@@ -242,7 +248,7 @@ export class PostgresActivityRepository {
     materiaId: number;
     gradoId: number;
     docenteId: number;
-    periodo: string;
+    periodo: number;
     anoAcademico: number;
     notaManual: number;
     observaciones?: string;
@@ -291,7 +297,7 @@ export class PostgresActivityRepository {
   async getGrades(filters: {
     materiaId: number;
     gradoId: number;
-    periodo: string;
+    periodo: number;
     anoAcademico: number;
   }): Promise<Grade[]> {
     const { rows } = await query<any>(
@@ -324,7 +330,7 @@ export class PostgresActivityRepository {
     estudianteId: number,
     materiaId: number,
     gradoId: number,
-    periodo: string,
+    periodo: number,
     anoAcademico: number
   ): Promise<Grade | null> {
     const { rows } = await query<any>(

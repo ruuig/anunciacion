@@ -34,6 +34,39 @@ export class PostgresStudentRepository implements StudentRepository {
     };
   }
 
+  async findAll(): Promise<Student[]> {
+    const sql = `SELECT
+      e.id, e.codigo, e.dpi, e.nombre as name, e.fecha_nacimiento as "birthDate", e.genero as gender, 
+      e.direccion as address, e.telefono as phone, e.email, e.url_avatar as "avatarUrl",
+      e.grado_id as "gradeId", e.fecha_inscripcion as "enrollmentDate",
+      e.estado as status, e.fecha_creacion as "createdAt", e.fecha_actualizacion as "updatedAt",
+      g.nombre as "gradeName"
+      FROM estudiantes e
+      LEFT JOIN grados g ON e.grado_id = g.id
+      ORDER BY e.nombre`;
+
+    const { rows } = await query<any>(sql);
+
+    return rows.map((row) => ({
+      id: row.id,
+      codigo: row.codigo,
+      dpi: row.dpi,
+      name: row.name,
+      birthDate: row.birthDate,
+      gender: row.gender,
+      address: row.address,
+      phone: row.phone,
+      email: row.email,
+      avatarUrl: row.avatarUrl,
+      gradeId: row.gradeId,
+      gradeName: row.gradeName,
+      enrollmentDate: row.enrollmentDate,
+      status: row.status,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt
+    }));
+  }
+
   async findByGradeAndSection(gradeId: number, sectionId?: number): Promise<Student[]> {
     const params: any[] = [gradeId];
     let sql = `SELECT

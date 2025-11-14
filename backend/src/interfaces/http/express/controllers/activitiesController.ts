@@ -9,11 +9,20 @@ const repository = new PostgresActivityRepository();
 
 export async function createActivity(req: Request, res: Response, next: NextFunction) {
   try {
-    const activity = await repository.createActivity(req.body);
+    console.log('📝 Creating activity with data:', req.body);
+    
+    // Parsear fecha si viene como string
+    const data = {
+      ...req.body,
+      fechaEntrega: req.body.fechaEntrega ? new Date(req.body.fechaEntrega) : undefined
+    };
+    
+    const activity = await repository.createActivity(data);
     console.log(`✅ Activity created: ${activity.nombre}`);
     res.status(201).json(activity);
   } catch (error) {
     console.error('❌ Error creating activity:', error);
+    console.error('Stack:', error);
     next(error);
   }
 }
@@ -31,7 +40,7 @@ export async function getActivities(req: Request, res: Response, next: NextFunct
     const activities = await repository.getActivities({
       materiaId: parseInt(materiaId as string),
       gradoId: parseInt(gradoId as string),
-      periodo: periodo as string,
+      periodo: parseInt(periodo as string),
       anoAcademico: parseInt(anoAcademico as string),
       docenteId: docenteId ? parseInt(docenteId as string) : undefined
     });
@@ -109,7 +118,7 @@ export async function getStudentActivityGrades(req: Request, res: Response, next
     const grades = await repository.getStudentActivityGrades(estudianteId, {
       materiaId: parseInt(materiaId as string),
       gradoId: parseInt(gradoId as string),
-      periodo: periodo as string,
+      periodo: parseInt(periodo as string),
       anoAcademico: parseInt(anoAcademico as string)
     });
 
@@ -148,7 +157,7 @@ export async function getGrades(req: Request, res: Response, next: NextFunction)
     const grades = await repository.getGrades({
       materiaId: parseInt(materiaId as string),
       gradoId: parseInt(gradoId as string),
-      periodo: periodo as string,
+      periodo: parseInt(periodo as string),
       anoAcademico: parseInt(anoAcademico as string)
     });
 
@@ -175,7 +184,7 @@ export async function getStudentGrade(req: Request, res: Response, next: NextFun
       estudianteId,
       parseInt(materiaId as string),
       parseInt(gradoId as string),
-      periodo as string,
+      parseInt(periodo as string),
       parseInt(anoAcademico as string)
     );
 

@@ -5,7 +5,7 @@ export interface Activity {
   materiaId: number;
   gradoId: number;
   docenteId: number;
-  periodo: string;
+  periodo: number;
   anoAcademico: number;
   ponderacion: number;
   fechaEntrega?: Date;
@@ -29,7 +29,7 @@ export interface Grade {
   materiaId: number;
   gradoId: number;
   docenteId: number;
-  periodo: string;
+  periodo: number;
   notaFinal?: number;
   notaManual?: number;
   usarNotaManual: boolean;

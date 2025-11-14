@@ -18,7 +18,9 @@ export async function getStudentsByGrade(req: Request, res: Response, next: Next
   try {
     const gradeId = parseInt(req.query.gradeId as string);
     if (!gradeId) {
-      return res.status(400).json({ error: "gradeId is required" });
+      // Si no hay gradeId, devolver todos los estudiantes
+      const students = await studentRepository.findAll();
+      return res.json(students);
     }
     const students = await studentRepository.findByGradeAndSection(gradeId);
     res.json(students);

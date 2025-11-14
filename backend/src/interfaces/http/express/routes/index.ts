@@ -8,6 +8,9 @@ import subjectsRoutes from "./subjectsRoutes";
 import gradeRoutes from "./gradeRoutes";
 import studentRoutes from "./studentRoutes";
 import activitiesRoutes from "./activitiesRoutes";
+import attendanceRoutes from "./attendanceRoutes";
+import paymentRoutes from "./paymentRoutes";
+import busServiceRoutes from "./busServiceRoutes";
 
 export function registerRoutes(app: Express) {
   app.use("/api/auth", authRoutes);
@@ -19,4 +22,7 @@ export function registerRoutes(app: Express) {
   app.use("/grades", gradeRoutes);
   app.use("/students", studentRoutes);
   app.use("/api/activities", activitiesRoutes);
+  app.use("/api/attendance", attendanceRoutes);
+  app.use("/api/pagos", paymentRoutes);
+  app.use("/api/bus", busServiceRoutes);
 }
