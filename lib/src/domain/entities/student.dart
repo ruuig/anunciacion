@@ -4,6 +4,7 @@ import 'package:anunciacion/src/domain/value_objects/value_objects.dart';
 
 class Student extends Equatable {
   final int id;
+  final String? codigo;
   final DPI dpi;
   final String name;
   final DateTime birthDate;
@@ -21,6 +22,7 @@ class Student extends Equatable {
 
   const Student({
     required this.id,
+    this.codigo,
     required this.dpi,
     required this.name,
     required this.birthDate,
@@ -39,6 +41,7 @@ class Student extends Equatable {
 
   // Constructor para crear un nuevo estudiante
   factory Student.create({
+    String? codigo,
     required DPI dpi,
     required String name,
     required DateTime birthDate,
@@ -52,6 +55,7 @@ class Student extends Equatable {
   }) {
     return Student(
       id: 0, // ID temporal
+      codigo: codigo,
       dpi: dpi,
       name: name,
       birthDate: birthDate,
@@ -83,6 +87,7 @@ class Student extends Equatable {
   @override
   List<Object?> get props => [
         id,
+        codigo,
         dpi,
         name,
         birthDate,

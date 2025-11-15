@@ -1,0 +1,181 @@
+import 'dart:convert';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+
+class ApiClient {
+  final Dio _dio;
+  final String baseUrl;
+
+  ApiClient({required this.baseUrl})
+      : _dio = Dio(BaseOptions(
+          baseUrl: baseUrl,
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+        )) {
+    _dio.interceptors.add(InterceptorsWrapper(
+      onRequest: (options, handler) {
+        debugPrint('Request: ${options.method} ${options.uri}');
+        return handler.next(options);
+      },
+      onResponse: (response, handler) {
+        debugPrint(
+            'Response: ${response.statusCode} ${response.requestOptions.path}');
+        return handler.next(response);
+      },
+      onError: (DioException e, handler) {
+        debugPrint('Error: ${e.message}');
+        return handler.next(e);
+      },
+    ));
+  }
+
+  Future<dynamic> get(String path,
+      {Map<String, dynamic>? queryParameters}) async {
+    try {
+      final response = await _dio.get(
+        path,
+        queryParameters: queryParameters,
+        options: Options(
+          validateStatus: (status) =>
+              status! < 500, // Aceptar códigos de estado < 500
+        ),
+      );
+
+      // Si es un 404, devolver null en lugar de lanzar una excepción
+      if (response.statusCode == 404) {
+        return null;
+      }
+
+      return response.data;
+    } on DioException catch (e) {
+      return _handleError(e);
+    }
+  }
+
+  Future<dynamic> post(String path, {Map<String, dynamic>? data}) async {
+    try {
+      print('🌐 Enviando POST a: $path');
+      print('📦 Datos: $data');
+
+      final response = await _dio.post(
+        path,
+        data: data,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) =>
+              status! < 500, // Aceptar códigos de estado < 500
+        ),
+      );
+
+      print('✅ Respuesta recibida: ${response.statusCode}');
+      print('📄 Datos de respuesta: ${response.data}');
+
+      // Si es un 404, devolver null en lugar de lanzar una excepción
+      if (response.statusCode == 404) {
+        print('⚠️ Recurso no encontrado (404)');
+        return null;
+      }
+
+      return response.data;
+    } on DioException catch (e) {
+      print('❌ Error en la petición POST:');
+      print('   URL: ${e.requestOptions.uri}');
+      print('   Método: ${e.requestOptions.method}');
+      print('   Código de estado: ${e.response?.statusCode}');
+      print('   Mensaje: ${e.message}');
+      print('   Respuesta: ${e.response?.data}');
+
+      // Si hay una respuesta con datos, devolverla
+      if (e.response?.data != null) {
+        return e.response!.data;
+      }
+
+      // Si no hay datos en la respuesta, lanzar la excepción
+      throw _handleError(e);
+    } catch (e, stackTrace) {
+      print('❌ Error inesperado en POST:');
+      print('   Error: $e');
+      print('   Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> put(String path,
+      {Map<String, dynamic>? data}) async {
+    try {
+      final response = await _dio.put(
+        path,
+        data: data,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> delete(String path) async {
+    try {
+      await _dio.delete(
+        path,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  dynamic _handleError(DioException e) {
+    if (e.response != null) {
+      // Si es un 404, devolver null en lugar de lanzar una excepción
+      if (e.response?.statusCode == 404) {
+        return null;
+      }
+
+      final responseData = e.response?.data;
+      final statusCode = e.response?.statusCode ?? 500;
+
+      throw ApiException(
+        message: responseData is Map
+            ? responseData['message']?.toString() ?? 'Error en la petición'
+            : responseData?.toString() ?? 'Error en la petición',
+        statusCode: statusCode,
+        data: responseData,
+      );
+    } else {
+      throw ApiException(
+        message: e.message ?? 'Error de conexión',
+        statusCode: 0,
+        data: null,
+      );
+    }
+  }
+}
+
+class ApiException implements Exception {
+  final String message;
+  final int statusCode;
+  final dynamic data;
+
+  ApiException({
+    required this.message,
+    required this.statusCode,
+    this.data,
+  });
+
+  @override
+  String toString() => 'ApiException: $message (Status: $statusCode)';
+}

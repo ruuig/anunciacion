@@ -15,7 +15,7 @@ class App extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(useMaterial3: true),
       home: const LoginFrame(
-        logoUrl: '/src/assets/logoanunciacion.png',
+        logoUrl: 'assets/logoanunciacion.png',
       ),
     );
   }

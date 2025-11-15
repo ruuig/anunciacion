@@ -1,7 +1,6 @@
 import 'package:anunciacion/src/presentation/screens/homescreen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:anunciacion/src/presentation/providers/providers.dart';
 
 class LoginFrame extends ConsumerStatefulWidget {
@@ -112,7 +111,7 @@ class _LoginFrameState extends ConsumerState<LoginFrame> {
                               widget.logoUrl == null || widget.logoUrl!.isEmpty
                                   ? Icon(Icons.image_outlined,
                                       size: 42, color: Colors.grey.shade500)
-                                  : Image.network(
+                                  : Image.asset(
                                       widget.logoUrl!,
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) => Icon(

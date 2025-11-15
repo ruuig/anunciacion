@@ -30,7 +30,8 @@ class Result<T> {
     } else if (!isSuccess && error != null) {
       return onFailure(error!);
     } else {
-      throw Exception('Invalid Result state: isSuccess=$isSuccess, hasData=$hasData, hasError=$hasError');
+      throw Exception(
+          'Invalid Result state: isSuccess=$isSuccess, hasData=$hasData, hasError=$hasError');
     }
   }
 }

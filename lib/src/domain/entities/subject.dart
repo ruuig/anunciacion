@@ -8,6 +8,7 @@ class Subject extends Equatable {
   final String? description;
   final bool active;
   final DateTime createdAt;
+  final List<Map<String, dynamic>>? teachers; // Docentes asignados
 
   const Subject({
     required this.id,
@@ -16,6 +17,7 @@ class Subject extends Equatable {
     this.description,
     required this.active,
     required this.createdAt,
+    this.teachers,
   });
 
   // Constructor para crear una nueva materia
@@ -35,7 +37,8 @@ class Subject extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, name, code, description, active, createdAt];
+  List<Object?> get props =>
+      [id, name, code, description, active, createdAt, teachers];
 
   @override
   String toString() => 'Subject(id: $id, name: $name, code: $code)';

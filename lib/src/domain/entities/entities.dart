@@ -1,4 +1,6 @@
 // Exportar todas las entidades del dominio
+export 'activity.dart';
+export 'attendance.dart';
 export 'educational_level.dart';
 export 'grade.dart';
 export 'grade_entry.dart';

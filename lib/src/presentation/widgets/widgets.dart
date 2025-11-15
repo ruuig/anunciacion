@@ -8,6 +8,7 @@ export 'CustomCard.dart';
 export 'bottomBar.dart';
 export 'SegmentedTabs.dart';
 export 'select_field.dart';
+export 'input_field.dart';
 export 'grades_tab_body.dart';
 export 'black_button.dart';
 export 'activities_tab_body.dart';

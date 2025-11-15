@@ -14,7 +14,14 @@ dependencies:
 
   # Base de datos - PostgreSQL
   postgres: ^3.4.8
-
+  
+  # PDF y archivos
+  pdf: ^3.10.4
+  printing: ^5.11.0
+  file_picker: ^6.1.1
+  http: ^1.1.0
+  syncfusion_flutter_pdf: ^24.1.41
+  
   # File system access (required by some plugins)
   path_provider: ^2.1.1
 
@@ -27,6 +34,7 @@ dependencies:
   crypto: ^3.0.3
   uuid: ^4.2.1
   equatable: ^2.0.5
+  url_launcher: ^6.2.2
 
   mobile_scanner: ^5.1.1
 

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/entities.dart';
 import '../../domain/value_objects/value_objects.dart';
 import '../../application/use_cases/use_cases.dart';
-import '../../infrastructure/repositories/repositories_impl.dart';
+import '../../infrastructure/http/http_user_repository.dart';
 import '../../infrastructure/repositories/role_repository_impl.dart';
 
 // Estado del usuario
@@ -145,8 +145,8 @@ class UserNotifier extends StateNotifier<UserState> {
 }
 
 // Providers usando Riverpod
-final userRepositoryProvider = Provider<UserRepositoryImpl>((ref) {
-  return UserRepositoryImpl();
+final userRepositoryProvider = Provider<HttpUserRepository>((ref) {
+  return HttpUserRepository();
 });
 
 final authenticateUserUseCaseProvider =

@@ -1,13 +1,16 @@
 import 'dart:math';
-import 'package:anunciacion/src/presentation/screens/StudentsPage.dart';
 import 'package:anunciacion/src/presentation/screens/config_screen.dart';
-import 'package:anunciacion/src/presentation/screens/pagos/payments_screen.dart';
 import 'package:anunciacion/src/presentation/screens/qr_screen.dart';
 import 'package:anunciacion/src/presentation/screens/reports/reports_screen.dart';
+import 'package:anunciacion/src/presentation/screens/StudentsPage.dart';
+import 'package:anunciacion/src/presentation/screens/bus/bus_service_screen.dart';
+import 'package:anunciacion/src/presentation/screens/pagos/payments_management_screen.dart';
+import 'package:anunciacion/src/presentation/screens/grados/grades_subjects_management_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anunciacion/src/presentation/widgets/CustomCard.dart';
 import 'package:anunciacion/src/presentation/widgets/bottomBar.dart';
-import 'notas_page.dart';
+import 'package:anunciacion/src/presentation/providers/providers.dart';
 
 class HomeLuxuryPage extends StatefulWidget {
   const HomeLuxuryPage({super.key});
@@ -50,7 +53,7 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
                         max(0, h - collapsedHeight),
                         expandedHeight - collapsedHeight,
                       );
-                  return _WaveHeader(
+                  return _WaveHeaderConsumer(
                     collapse: percent,
                     logoAsset: 'assets/logoanunciacion.png',
                   );
@@ -77,10 +80,8 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const NotasPage(
-                            userRole: 'Docente',
-                            assignedGrades: ['1ro Primaria', '2do Primaria'],
-                          ),
+                          builder: (context) =>
+                              const GradesSubjectsManagementPage(),
                         ),
                       );
                     },
@@ -93,7 +94,8 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const PaymentsScreen(),
+                          builder: (context) =>
+                              const PaymentsManagementScreen(),
                         ),
                       );
                     },
@@ -175,18 +177,52 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
   }
 }
 
+/// ===================== WAVE HEADER CONSUMER =====================
+
+class _WaveHeaderConsumer extends ConsumerWidget {
+  const _WaveHeaderConsumer({
+    required this.collapse,
+    required this.logoAsset,
+  });
+
+  final double collapse;
+  final String logoAsset;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final userState = ref.watch(userProvider);
+    final fullName = userState.currentUser?.name ?? 'Usuario';
+
+    return _WaveHeader(
+      collapse: collapse,
+      logoAsset: logoAsset,
+      fullName: fullName,
+    );
+  }
+}
+
 /// ===================== WAVE HEADER =====================
 
 class _WaveHeader extends StatelessWidget {
   const _WaveHeader({
     required this.collapse,
     required this.logoAsset,
+    required this.fullName,
   });
 
   final double collapse;
-  final String name = 'María';
-  final String lastName = 'González';
   final String logoAsset;
+  final String fullName;
+
+  String get name {
+    final parts = fullName.split(' ');
+    return parts.isNotEmpty ? parts[0] : 'Usuario';
+  }
+
+  String get lastName {
+    final parts = fullName.split(' ');
+    return parts.length > 1 ? parts.sublist(1).join(' ') : '';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -249,7 +285,7 @@ class _WaveHeader extends StatelessWidget {
                           text: '$name\n',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 50,
+                            fontSize: 36,
                             fontWeight: FontWeight.w900,
                             height: 1.0,
                           ),
@@ -258,7 +294,7 @@ class _WaveHeader extends StatelessWidget {
                               text: lastName,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 25,
+                                fontSize: 18,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),

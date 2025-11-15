@@ -1,9 +1,9 @@
+import 'package:anunciacion/src/presentation/screens/reports/report_grades_page.dart';
+import 'package:anunciacion/src/presentation/screens/reports/report_payments_page.dart';
 import 'package:flutter/material.dart';
-import 'report_attendance_page.dart';
-import 'report_grades_page.dart';
-import 'report_payments_page.dart';
-import 'report_general_page.dart';
-import 'report_pdf_dialog.dart';
+import 'general_reports_screen.dart';
+import '../grados/grades_subjects_management_page.dart';
+import '../pagos/payments_screen.dart';
 
 class ReportsScreen extends StatelessWidget {
   const ReportsScreen({super.key});
@@ -12,11 +12,6 @@ class ReportsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // ✅ Tipamos correctamente la lista de mapas
     final List<Map<String, dynamic>> reports = [
-      {
-        'title': 'Asistencias',
-        'icon': Icons.event_available_outlined,
-        'page': const ReportAttendancePage(),
-      },
       {
         'title': 'Notas académicas',
         'icon': Icons.grade_outlined,
@@ -30,7 +25,7 @@ class ReportsScreen extends StatelessWidget {
       {
         'title': 'Resumen general',
         'icon': Icons.dashboard_customize_outlined,
-        'page': const ReportGeneralPage(),
+        'page': const GeneralReportsScreen(),
       },
     ];
 

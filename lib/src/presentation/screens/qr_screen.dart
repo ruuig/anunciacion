@@ -2,6 +2,9 @@ import 'package:anunciacion/src/presentation/presentation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import '../../infrastructure/http/http_attendance_repository.dart';
+import '../../infrastructure/repositories/http_grade_repository.dart';
+import '../../domain/entities/entities.dart';
 
 /// Página principal: dos apartados -> Entrada / Salida
 class QrScannerPage extends StatefulWidget {
@@ -14,43 +17,132 @@ class QrScannerPage extends StatefulWidget {
 class _QrScannerPageState extends State<QrScannerPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tab;
+  final _attendanceRepository = HttpAttendanceRepository();
+  final _gradeRepository = HttpGradeRepository();
 
-  // Mock de catálogo (reemplaza con tu data real)
-  final grades = const [
-    '1ro Primaria',
-    '2do Primaria',
-    '3ro Primaria',
-    '4to Primaria',
-    '5to Primaria',
-    '6to Primaria',
-  ];
-  final sections = const ['A', 'B', 'C'];
+  // Datos del backend
+  List<Grade> _grades = [];
+  Grade? _selectedInGrade;
+  Grade? _selectedOutGrade;
+  String _inSearchName = '';
+  String _outSearchName = '';
 
-  // Filtros ENTRADA
-  String? inGrade;
-  String? inSection;
-
-  // Filtros SALIDA
-  String? outGrade;
-  String? outSection;
-  String? outName;
+  // Resúmenes de asistencia
+  AttendanceSummary? _entrySummary;
+  AttendanceSummary? _exitSummary;
+  bool _loadingEntrySummary = true;
+  bool _loadingExitSummary = true;
 
   bool showInFilters = true;
   bool showOutFilters = true;
-
-  // Estado de conteos (mock). Actualiza al escanear
-  int totalInAssigned = 28; // total esperados hoy (entrada)
-  int arrived = 5;
-  int get pendingIn => (totalInAssigned - arrived).clamp(0, totalInAssigned);
-
-  int totalOutAssigned = 28; // total del día (salida)
-  int left = 2;
-  int get pendingOut => (totalOutAssigned - left).clamp(0, totalOutAssigned);
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 2, vsync: this);
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final grades = await _gradeRepository.findActiveGrades();
+      final entrySummary = await _attendanceRepository.getEntrySummary();
+      final exitSummary = await _attendanceRepository.getExitSummary();
+
+      if (mounted) {
+        setState(() {
+          _grades = grades;
+          _entrySummary = entrySummary;
+          _exitSummary = exitSummary;
+          _loadingEntrySummary = false;
+          _loadingExitSummary = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loadingEntrySummary = false;
+          _loadingExitSummary = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cargar datos: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _refreshSummaries() async {
+    try {
+      final entrySummary = await _attendanceRepository.getEntrySummary(
+        gradeId: _selectedInGrade?.id,
+      );
+      final exitSummary = await _attendanceRepository.getExitSummary(
+        gradeId: _selectedOutGrade?.id,
+      );
+
+      if (mounted) {
+        setState(() {
+          _entrySummary = entrySummary;
+          _exitSummary = exitSummary;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al actualizar: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleQREntry(String code) async {
+    try {
+      await _attendanceRepository.registerEntry(code);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✓ Entrada registrada'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        _refreshSummaries();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleQRExit(String code) async {
+    try {
+      await _attendanceRepository.registerExit(code);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✓ Salida registrada'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        _refreshSummaries();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -121,7 +213,7 @@ class _QrScannerPageState extends State<QrScannerPage>
                       Expanded(
                         child: _KpiTile(
                           label: 'En el colegio',
-                          value: '$arrived',
+                          value: '${_entrySummary?.present ?? 0}',
                           icon: Icons.groups_2_outlined,
                         ),
                       ),
@@ -129,7 +221,7 @@ class _QrScannerPageState extends State<QrScannerPage>
                       Expanded(
                         child: _KpiTile(
                           label: 'Faltan por llegar',
-                          value: '$pendingIn',
+                          value: '${_entrySummary?.pending ?? 0}',
                           icon: Icons.schedule_outlined,
                         ),
                       ),
@@ -161,35 +253,25 @@ class _QrScannerPageState extends State<QrScannerPage>
                       ),
                       if (showInFilters) ...[
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SelectField<String>(
-                                label: 'Filtrar por Grado',
-                                placeholder: 'Todos los grados',
-                                value: inGrade,
-                                items: ['', ...grades],
-                                itemLabel: (v) => v ?? 'Todos',
-                                onSelected: (v) => setState(() => inGrade = v),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: SelectField<String>(
-                                label: 'Filtrar por Sección',
-                                placeholder: inGrade == null
-                                    ? 'Selecciona un grado'
-                                    : 'Todas las secciones',
-                                value: inSection,
-                                items: outGrade == null
-                                    ? const ['']
-                                    : ['', ...sections],
-                                itemLabel: (v) => v ?? 'Todas',
-                                onSelected: (v) =>
-                                    setState(() => inSection = v),
-                              ),
-                            ),
-                          ],
+                        SelectField<Grade?>(
+                          label: 'Filtrar por Grado',
+                          placeholder: 'Todos los grados',
+                          value: _selectedInGrade,
+                          items: [null, ..._grades],
+                          itemLabel: (g) => g?.name ?? 'Todos',
+                          onSelected: (v) {
+                            setState(() => _selectedInGrade = v);
+                            _refreshSummaries();
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        InputField(
+                          label: 'Buscar por nombre',
+                          hintText: 'Escribe nombre del estudiante...',
+                          icon: Icons.search,
+                          onChanged: (v) {
+                            setState(() => _inSearchName = v);
+                          },
                         ),
                       ],
                     ],
@@ -205,14 +287,18 @@ class _QrScannerPageState extends State<QrScannerPage>
                   onPressed: () async {
                     await _openScanner(
                       title: 'Entrada - Escanear',
-                      onCode: (code) {
-                        // TODO: validar código, consultar API y registrar ENTRADA
-                        // Simulamos conteo:
-                        setState(() =>
-                            arrived = (arrived + 1).clamp(0, totalInAssigned));
-                      },
+                      onCode: _handleQREntry,
                     );
                   },
+                ),
+
+                const SizedBox(height: 12),
+
+                // Botón registro manual
+                BlackButton(
+                  label: 'Registrar Entrada Manual',
+                  icon: Icons.person_add_outlined,
+                  onPressed: () => _openManualEntryModal(),
                 ),
               ],
             ),
@@ -229,7 +315,7 @@ class _QrScannerPageState extends State<QrScannerPage>
                       Expanded(
                         child: _KpiTile(
                           label: 'Ya salieron',
-                          value: '$left',
+                          value: '${_exitSummary?.present ?? 0}',
                           icon: Icons.logout_rounded,
                         ),
                       ),
@@ -237,7 +323,7 @@ class _QrScannerPageState extends State<QrScannerPage>
                       Expanded(
                         child: _KpiTile(
                           label: 'Quedan',
-                          value: '$pendingOut',
+                          value: '${_exitSummary?.pending ?? 0}',
                           icon: Icons.home_work_outlined,
                         ),
                       ),
@@ -269,50 +355,25 @@ class _QrScannerPageState extends State<QrScannerPage>
                       ),
                       if (showOutFilters) ...[
                         const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: SelectField<String>(
-                                label: 'Filtrar por Grado',
-                                placeholder: 'Todos los grados',
-                                value: outGrade,
-                                items: ['', ...grades],
-                                itemLabel: (v) => v ?? 'Todos',
-                                onSelected: (v) => setState(() => outGrade = v),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: SelectField<String>(
-                                label: 'Filtrar por Sección',
-                                placeholder: outGrade == null
-                                    ? 'Selecciona un grado'
-                                    : 'Todas las secciones',
-                                value: outSection ?? '',
-                                items: outGrade == null
-                                    ? const ['']
-                                    : ['', ...sections],
-                                itemLabel: (v) => v.isEmpty ? 'Todas' : v,
-                                onSelected: (v) => setState(
-                                    () => outSection = v.isEmpty ? null : v),
-                              ),
-                            ),
-                          ],
+                        SelectField<Grade?>(
+                          label: 'Filtrar por Grado',
+                          placeholder: 'Todos los grados',
+                          value: _selectedOutGrade,
+                          items: [null, ..._grades],
+                          itemLabel: (g) => g?.name ?? 'Todos',
+                          onSelected: (v) {
+                            setState(() => _selectedOutGrade = v);
+                            _refreshSummaries();
+                          },
                         ),
                         const SizedBox(height: 12),
-                        SelectField<String>(
-                          label: 'Filtrar por Nombre',
-                          placeholder: 'Todos los estudiantes',
-                          value: outName,
-                          items: const [
-                            '',
-                            'Ana López',
-                            'Carlos Méndez',
-                            'María Hernández',
-                            'Diego Ruiz'
-                          ],
-                          itemLabel: (v) => v ?? 'Todos',
-                          onSelected: (v) => setState(() => outName = v),
+                        InputField(
+                          label: 'Buscar por nombre',
+                          hintText: 'Escribe nombre del estudiante...',
+                          icon: Icons.search,
+                          onChanged: (v) {
+                            setState(() => _outSearchName = v);
+                          },
                         ),
                       ],
                     ],
@@ -327,18 +388,55 @@ class _QrScannerPageState extends State<QrScannerPage>
                   onPressed: () async {
                     await _openScanner(
                       title: 'Salida - Escanear',
-                      onCode: (code) {
-                        // TODO: validar código, consultar API y registrar SALIDA
-                        setState(
-                            () => left = (left + 1).clamp(0, totalOutAssigned));
-                      },
+                      onCode: _handleQRExit,
                     );
                   },
+                ),
+
+                const SizedBox(height: 12),
+
+                // Botón registro manual
+                BlackButton(
+                  label: 'Registrar Salida Manual',
+                  icon: Icons.person_remove_outlined,
+                  onPressed: () => _openManualExitModal(),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _openManualEntryModal() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ManualEntryModal(
+        grades: _grades,
+        attendanceRepository: _attendanceRepository,
+        onSuccess: () {
+          _refreshSummaries();
+          Navigator.pop(context);
+        },
+      ),
+    );
+  }
+
+  Future<void> _openManualExitModal() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ManualExitModal(
+        grades: _grades,
+        attendanceRepository: _attendanceRepository,
+        onSuccess: () {
+          _refreshSummaries();
+          Navigator.pop(context);
+        },
       ),
     );
   }
@@ -600,6 +698,694 @@ class _OverlayView extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Modal para registrar entrada manual
+class _ManualEntryModal extends StatefulWidget {
+  final List<Grade> grades;
+  final HttpAttendanceRepository attendanceRepository;
+  final VoidCallback onSuccess;
+
+  const _ManualEntryModal({
+    required this.grades,
+    required this.attendanceRepository,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_ManualEntryModal> createState() => _ManualEntryModalState();
+}
+
+class _ManualEntryModalState extends State<_ManualEntryModal> {
+  Grade? _selectedGrade;
+  Attendance? _selectedStudent;
+  List<Attendance> _allStudents = [];
+  List<Attendance> _filteredStudents = [];
+  List<Attendance> _registeredStudents = [];
+  String _searchQuery = '';
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.grades.isNotEmpty) {
+      _selectedGrade = widget.grades.first;
+      _loadStudents();
+    }
+  }
+
+  Future<void> _loadStudents() async {
+    if (_selectedGrade == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final students = await widget.attendanceRepository.getTodayAttendance(
+        gradeId: _selectedGrade!.id,
+      );
+
+      setState(() {
+        _allStudents = students;
+        _filteredStudents = students;
+        _registeredStudents = [];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _filterStudents(String query) {
+    setState(() {
+      _searchQuery = query;
+      if (query.isEmpty) {
+        _filteredStudents = _allStudents;
+      } else {
+        _filteredStudents = _allStudents
+            .where((s) =>
+                s.studentName.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  Future<void> _registerEntry() async {
+    if (_selectedStudent == null) return;
+
+    try {
+      final codeOrId = _selectedStudent!.studentCode.isNotEmpty
+          ? _selectedStudent!.studentCode
+          : _selectedStudent!.studentId.toString();
+
+      await widget.attendanceRepository.registerManualEntry(codeOrId);
+
+      if (mounted) {
+        setState(() {
+          _registeredStudents.add(_selectedStudent!);
+          _selectedStudent = null;
+          _searchQuery = '';
+          _filteredStudents = _allStudents;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ Entrada registrada'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        widget.onSuccess();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Registrar Entrada Manual',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SelectField<Grade?>(
+                    label: 'Grado',
+                    placeholder: 'Selecciona un grado',
+                    value: _selectedGrade,
+                    items: widget.grades,
+                    itemLabel: (g) => g?.name ?? '',
+                    onSelected: (v) {
+                      setState(() => _selectedGrade = v);
+                      _loadStudents();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            // Contenido
+            Expanded(
+              child: ListView(
+                controller: controller,
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Búsqueda
+                  InputField(
+                    label: 'Buscar estudiante',
+                    hintText: 'Escribe el nombre...',
+                    icon: Icons.search,
+                    onChanged: _filterStudents,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Estudiante seleccionado - SOLO NOMBRE EN NEGRO GRANDE
+                  if (_selectedStudent != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 20, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green[400]!, width: 2),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedStudent!.studentName.isNotEmpty
+                                  ? _selectedStudent!.studentName
+                                  : 'Estudiante',
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF000000),
+                                letterSpacing: 0.5,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () =>
+                                setState(() => _selectedStudent = null),
+                            icon: const Icon(
+                              Icons.cancel,
+                              color: Colors.red,
+                              size: 32,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(height: 16),
+
+                  // Lista de estudiantes
+                  if (_isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_filteredStudents.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('No hay estudiantes'),
+                    )
+                  else
+                    ..._filteredStudents.map((s) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedStudent = s),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color:
+                                    _selectedStudent?.studentId == s.studentId
+                                        ? Colors.green[50]
+                                        : Colors.white,
+                                border: Border.all(
+                                  color:
+                                      _selectedStudent?.studentId == s.studentId
+                                          ? Colors.green[300]!
+                                          : Colors.grey[200]!,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          s.studentName,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        Text(
+                                          s.studentCode,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (_selectedStudent?.studentId ==
+                                      s.studentId)
+                                    const Icon(Icons.check_circle,
+                                        color: Colors.green),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )),
+
+                  const SizedBox(height: 24),
+
+                  // Botón registrar
+                  BlackButton(
+                    label: 'Registrar Entrada',
+                    onPressed: _selectedStudent != null ? _registerEntry : null,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Estudiantes que ya entraron
+                  if (_registeredStudents.isNotEmpty) ...[
+                    const Text(
+                      'Ya registrados',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ..._registeredStudents.map((s) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              border: Border.all(
+                                  color: Colors.green[200]!, width: 2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle,
+                                    color: Colors.green, size: 24),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        s.studentName,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      Text(
+                                        s.studentCode,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Modal para registrar salida manual
+class _ManualExitModal extends StatefulWidget {
+  final List<Grade> grades;
+  final HttpAttendanceRepository attendanceRepository;
+  final VoidCallback onSuccess;
+
+  const _ManualExitModal({
+    required this.grades,
+    required this.attendanceRepository,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_ManualExitModal> createState() => _ManualExitModalState();
+}
+
+class _ManualExitModalState extends State<_ManualExitModal> {
+  Grade? _selectedGrade;
+  Attendance? _selectedStudent;
+  List<Attendance> _allStudents = [];
+  List<Attendance> _filteredStudents = [];
+  List<Attendance> _registeredStudents = [];
+  String _searchQuery = '';
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.grades.isNotEmpty) {
+      _selectedGrade = widget.grades.first;
+      _loadStudents();
+    }
+  }
+
+  Future<void> _loadStudents() async {
+    if (_selectedGrade == null) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final students = await widget.attendanceRepository.getTodayAttendance(
+        gradeId: _selectedGrade!.id,
+      );
+
+      setState(() {
+        _allStudents = students;
+        _filteredStudents = students;
+        _registeredStudents = [];
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _filterStudents(String query) {
+    setState(() {
+      _searchQuery = query;
+      if (query.isEmpty) {
+        _filteredStudents = _allStudents;
+      } else {
+        _filteredStudents = _allStudents
+            .where((s) =>
+                s.studentName.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  Future<void> _registerExit() async {
+    if (_selectedStudent == null) return;
+
+    try {
+      final codeOrId = _selectedStudent!.studentCode.isNotEmpty
+          ? _selectedStudent!.studentCode
+          : _selectedStudent!.studentId.toString();
+
+      await widget.attendanceRepository.registerManualExit(codeOrId);
+
+      if (mounted) {
+        setState(() {
+          _registeredStudents.add(_selectedStudent!);
+          _selectedStudent = null;
+          _searchQuery = '';
+          _filteredStudents = _allStudents;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✓ Salida registrada'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        widget.onSuccess();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
+      minChildSize: 0.5,
+      builder: (_, controller) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Registrar Salida Manual',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SelectField<Grade?>(
+                    label: 'Grado',
+                    placeholder: 'Selecciona un grado',
+                    value: _selectedGrade,
+                    items: widget.grades,
+                    itemLabel: (g) => g?.name ?? '',
+                    onSelected: (v) {
+                      setState(() => _selectedGrade = v);
+                      _loadStudents();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            // Contenido
+            Expanded(
+              child: ListView(
+                controller: controller,
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Búsqueda
+                  InputField(
+                    label: 'Buscar estudiante',
+                    hintText: 'Escribe el nombre...',
+                    icon: Icons.search,
+                    onChanged: _filterStudents,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Estudiante seleccionado - SOLO NOMBRE EN NEGRO GRANDE
+                  if (_selectedStudent != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 20, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.green[400]!, width: 2),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedStudent!.studentName.isNotEmpty
+                                  ? _selectedStudent!.studentName
+                                  : 'Estudiante',
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF000000),
+                                letterSpacing: 0.5,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () =>
+                                setState(() => _selectedStudent = null),
+                            icon: const Icon(
+                              Icons.cancel,
+                              color: Colors.red,
+                              size: 32,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(height: 16),
+
+                  // Lista de estudiantes
+                  if (_isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else if (_filteredStudents.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Text('No hay estudiantes'),
+                    )
+                  else
+                    ..._filteredStudents.map((s) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _selectedStudent = s),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color:
+                                    _selectedStudent?.studentId == s.studentId
+                                        ? Colors.green[50]
+                                        : Colors.white,
+                                border: Border.all(
+                                  color:
+                                      _selectedStudent?.studentId == s.studentId
+                                          ? Colors.green[300]!
+                                          : Colors.grey[200]!,
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          s.studentName,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        Text(
+                                          s.studentCode,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (_selectedStudent?.studentId ==
+                                      s.studentId)
+                                    const Icon(Icons.check_circle,
+                                        color: Colors.green),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )),
+
+                  const SizedBox(height: 24),
+
+                  // Botón registrar
+                  BlackButton(
+                    label: 'Registrar Salida',
+                    onPressed: _selectedStudent != null ? _registerExit : null,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Estudiantes que ya salieron
+                  if (_registeredStudents.isNotEmpty) ...[
+                    const Text(
+                      'Ya registrados',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ..._registeredStudents.map((s) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              border: Border.all(
+                                  color: Colors.green[200]!, width: 2),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle,
+                                    color: Colors.green, size: 24),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        s.studentName,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: Colors.black87,
+                                        ),
+                                      ),
+                                      Text(
+                                        s.studentCode,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
