@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:anunciacion/src/domain/entities/user.dart';
 import 'package:anunciacion/src/presentation/widgets/widgets.dart';
-import 'package:anunciacion/src/domain/services/user_management_service.dart';
-import 'package:anunciacion/src/infrastructure/repositories/user_repository_impl.dart';
-import 'package:anunciacion/src/domain/value_objects/password.dart';
-import 'package:anunciacion/src/domain/value_objects/phone.dart';
+import 'package:anunciacion/src/infrastructure/http/http_client.dart';
 
 class CreateEditUserPage extends StatefulWidget {
   final User? initialUser;
@@ -19,7 +16,7 @@ class CreateEditUserPage extends StatefulWidget {
 }
 
 class _CreateEditUserPageState extends State<CreateEditUserPage> {
-  final _userService = UserManagementService(UserRepositoryImpl());
+  final _httpClient = HttpClient();
   late final TextEditingController _nameCtrl;
   late final TextEditingController _usernameCtrl;
   late final TextEditingController _passwordCtrl;
@@ -82,37 +79,47 @@ class _CreateEditUserPageState extends State<CreateEditUserPage> {
 
     try {
       if (widget.initialUser == null) {
-        // Crear nuevo usuario
-        await _userService.createUser(
-          name: _nameCtrl.text.trim(),
-          email: _usernameCtrl.text.trim(),
-          password: _passwordCtrl.text,
-          role: _selectedRoleId.toString(),
+        // Crear nuevo usuario via backend
+        await _httpClient.post(
+          '/users',
+          {
+            'name': _nameCtrl.text.trim(),
+            'username': _usernameCtrl.text.trim(),
+            'password': _passwordCtrl.text,
+            'roleId': _selectedRoleId,
+            'phone': _phoneCtrl.text.trim().isNotEmpty
+                ? _phoneCtrl.text.trim()
+                : null,
+            'status': 'activo',
+          },
         );
       } else {
-        // Actualizar usuario existente
-        final updatedUser = User(
-          id: widget.initialUser!.id,
-          name: _nameCtrl.text.trim(),
-          username: _usernameCtrl.text.trim(),
-          passwordHash: _passwordCtrl.text.isNotEmpty
-              ? Password(_passwordCtrl.text)
-              : widget.initialUser!.passwordHash,
-          roleId: _selectedRoleId!,
-          status: widget.initialUser!.status,
-          phone: _phoneCtrl.text.trim().isNotEmpty
-              ? Phone(_phoneCtrl.text.trim())
-              : widget.initialUser!.phone,
-          avatarUrl: widget.initialUser!.avatarUrl,
-          lastAccess: widget.initialUser!.lastAccess,
-          createdAt: widget.initialUser!.createdAt,
-          updatedAt: DateTime.now(),
+        // Actualizar usuario existente via backend
+        await _httpClient.put(
+          '/users/${widget.initialUser!.id}',
+          {
+            'name': _nameCtrl.text.trim(),
+            'username': _usernameCtrl.text.trim(),
+            'password':
+                _passwordCtrl.text.isNotEmpty ? _passwordCtrl.text : null,
+            'roleId': _selectedRoleId,
+            'phone': _phoneCtrl.text.trim().isNotEmpty
+                ? _phoneCtrl.text.trim()
+                : null,
+          },
         );
-        await _userService.updateUser(updatedUser);
       }
 
       if (mounted) {
-        Navigator.pop(context, true); // true indica que se guardó exitosamente
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(widget.initialUser == null
+                ? '✓ Usuario creado exitosamente'
+                : '✓ Usuario actualizado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -142,7 +149,8 @@ class _CreateEditUserPageState extends State<CreateEditUserPage> {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       );
 
   @override
@@ -189,7 +197,7 @@ class _CreateEditUserPageState extends State<CreateEditUserPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       // Nombre completo
                       const Text(
                         'Nombre Completo',
@@ -208,9 +216,9 @@ class _CreateEditUserPageState extends State<CreateEditUserPage> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       // Nombre de usuario
                       const Text(
                         'Nombre de Usuario',
@@ -229,9 +237,9 @@ class _CreateEditUserPageState extends State<CreateEditUserPage> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       // Contraseña
                       Text(
                         isEdit ? 'Nueva Contraseña (opcional)' : 'Contraseña',
@@ -246,16 +254,18 @@ class _CreateEditUserPageState extends State<CreateEditUserPage> {
                         controller: _passwordCtrl,
                         obscureText: true,
                         decoration: _input(
-                          isEdit ? 'Dejar vacío para mantener actual' : 'Mínimo 6 caracteres',
+                          isEdit
+                              ? 'Dejar vacío para mantener actual'
+                              : 'Mínimo 6 caracteres',
                         ),
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       // Teléfono
                       const Text(
                         'Teléfono (opcional)',
@@ -304,7 +314,8 @@ class _CreateEditUserPageState extends State<CreateEditUserPage> {
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
                         ),
                         items: roles.map((role) {
                           return DropdownMenuItem<int>(
@@ -318,7 +329,8 @@ class _CreateEditUserPageState extends State<CreateEditUserPage> {
                             ),
                           );
                         }).toList(),
-                        onChanged: (value) => setState(() => _selectedRoleId = value),
+                        onChanged: (value) =>
+                            setState(() => _selectedRoleId = value),
                       ),
                     ],
                   ),

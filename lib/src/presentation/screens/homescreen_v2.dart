@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anunciacion/src/presentation/providers/providers.dart';
-import 'package:anunciacion/src/presentation/screens/grados/grades_subjects_management_page.dart';
 import 'package:anunciacion/src/presentation/screens/pagos/payments_management_screen.dart';
 import 'package:anunciacion/src/presentation/screens/reports/reports_screen.dart';
+import 'package:anunciacion/src/presentation/screens/reports/report_grades_page.dart';
 import 'package:anunciacion/src/presentation/screens/estudiantes/create_edit_student_page.dart';
 import 'package:anunciacion/src/presentation/screens/qr_screen.dart';
 import 'package:anunciacion/src/presentation/screens/bus/bus_service_screen.dart';
@@ -148,8 +148,7 @@ class HomeLuxuryPageV2 extends ConsumerWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      const GradesSubjectsManagementPage(),
+                                  builder: (_) => const ReportGradesPage(),
                                 ),
                               );
                             },

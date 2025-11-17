@@ -164,9 +164,9 @@ class HttpAttendanceRepository {
   Attendance _mapToAttendance(Map<String, dynamic> json) {
     return Attendance(
       id: json['id'] ?? 0,
-      studentId: json['estudianteId'] ?? json['studentId'] ?? 0,
+      studentId: json['estudianteId'] ?? json['studentId'] ?? json['id'] ?? 0,
       studentCode: json['codigo'] ?? json['studentCode'] ?? '',
-      studentName: json['nombre'] ?? json['studentName'] ?? '',
+      studentName: json['name'] ?? json['nombre'] ?? json['studentName'] ?? '',
       gradeId: json['gradoId'] ?? json['gradeId'] ?? 0,
       gradeName: json['gradoNombre'] ?? json['gradeName'] ?? '',
       sectionId: json['sectionId'] ?? 0,

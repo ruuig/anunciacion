@@ -30,8 +30,8 @@ class UserRepositoryImpl implements UserRepository {
       return entity.copyWith(id: id);
     } else {
       // Actualizar usuario existente
-      await _dbHelper
-          .update('usuarios', _mapFromUser(entity), 'id = @param_0', [entity.id]);
+      await _dbHelper.update(
+          'usuarios', _mapFromUser(entity), 'id = @param_0', [entity.id]);
       return entity;
     }
   }
@@ -128,10 +128,12 @@ class UserRepositoryImpl implements UserRepository {
       id: row['id'] ?? 0, // Default to 0 if null
       name: row['nombre'] ?? '', // Default to empty string if null
       username: row['username'] ?? '', // Default to empty string if null
-      passwordHash: Password.fromPlainText(row['password'] as String), // Convertir texto plano a hash
+      passwordHash: Password.fromPlainText(
+          row['password'] as String), // Convertir texto plano a hash
       phone: row['telefono'] != null ? Phone(row['telefono']) : null,
       roleId: row['rol_id'] ?? 1, // Default to role 1 if null
-      status: UserStatus.fromString(row['estado'] ?? 'activo'), // Default to 'activo' if null
+      status: UserStatus.fromString(
+          row['estado'] ?? 'activo'), // Default to 'activo' if null
       avatarUrl: row['url_avatar'],
       lastAccess: _parseDateTime(row['ultimo_acceso']),
       createdAt: _parseDateTime(row['fecha_creacion']) ?? DateTime.now(),
@@ -166,7 +168,8 @@ class UserRepositoryImpl implements UserRepository {
       'id': user.id,
       'nombre': user.name,
       'username': user.username,
-      'password': user.passwordHash.hash, // Guardar el hash como texto (la BD espera texto plano)
+      'password': user.passwordHash
+          .hash, // Guardar el hash como texto (la BD espera texto plano)
       'telefono': user.phone?.value,
       'rol_id': user.roleId,
       'estado': user.status.toString(),

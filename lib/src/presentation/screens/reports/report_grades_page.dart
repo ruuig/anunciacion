@@ -611,29 +611,35 @@ class _ReportGradesPageState extends State<ReportGradesPage> {
 
                         // Botón para estudiante individual
                         if (_selectedStudent != null)
-                          BlackButton(
-                            label: _isGeneratingPdf
-                                ? 'Generando PDF...'
-                                : 'Descargar PDF del Estudiante',
-                            icon: Icons.download_outlined,
-                            onPressed: _isGeneratingPdf
-                                ? null
-                                : () =>
-                                    _generatePdfForStudent(_selectedStudent!),
+                          SizedBox(
+                            width: double.infinity,
+                            child: BlackButton(
+                              label: _isGeneratingPdf
+                                  ? 'Generando PDF...'
+                                  : 'Descargar PDF Estudiante',
+                              icon: Icons.download_outlined,
+                              onPressed: _isGeneratingPdf
+                                  ? null
+                                  : () =>
+                                      _generatePdfForStudent(_selectedStudent!),
+                            ),
                           ),
 
                         if (_selectedStudent != null)
                           const SizedBox(height: 12),
 
                         // Botón para grado completo
-                        BlackButton(
-                          label: _isGeneratingPdf
-                              ? 'Generando PDF...'
-                              : 'Descargar PDF del Grado Completo',
-                          icon: Icons.download_for_offline_outlined,
-                          onPressed: _isGeneratingPdf || _students.isEmpty
-                              ? null
-                              : _generatePdfForGrade,
+                        SizedBox(
+                          width: double.infinity,
+                          child: BlackButton(
+                            label: _isGeneratingPdf
+                                ? 'Generando PDF...'
+                                : 'Descargar PDF Grado Completo',
+                            icon: Icons.download_for_offline_outlined,
+                            onPressed: _isGeneratingPdf || _students.isEmpty
+                                ? null
+                                : _generatePdfForGrade,
+                          ),
                         ),
                       ],
                     ),

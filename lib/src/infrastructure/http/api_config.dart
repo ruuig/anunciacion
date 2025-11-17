@@ -9,8 +9,8 @@ class ApiConfig {
   // Endpoints
   static const String estudiantes = '/api/estudiantes';
   static const String padres = '/api/padres';
-  static const String grados = '/grades';
-  static const String secciones = '/sections';
+  static const String grados = '/api/catalogos/grados';
+  static const String secciones = '/api/catalogos/secciones';
   static const String materias = '/api/materias';
   static const String auth = '/api/auth';
   static const String users = '/users';

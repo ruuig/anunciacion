@@ -68,14 +68,6 @@ class _AdministrationPageState extends State<AdministrationPage> {
       color: const Color(0xFFEA580C), // naranja
       requiredPermission: 'edit_students',
     ),
-    _AdminModule(
-      id: 'system',
-      title: 'Configuración del Sistema',
-      description: 'Ajustes generales del sistema',
-      icon: Icons.settings_outlined,
-      color: const Color(0xFF6B7280), // gris
-      requiredPermission: 'manage_users',
-    ),
   ];
 
   bool _hasPermission(String p) =>
@@ -103,10 +95,6 @@ class _AdministrationPageState extends State<AdministrationPage> {
         return;
       case 'parent_admin':
         // Abrir vista intermedia de administración de padres
-        setState(() => _active = moduleId);
-        return;
-      case 'system':
-        // Mantener la vista de sistema como antes
         setState(() => _active = moduleId);
         return;
     }
@@ -304,8 +292,6 @@ class _AdministrationPageState extends State<AdministrationPage> {
         return _StudentManagementView(onBack: _goBackToDashboard);
       case 'parent_admin':
         return _ParentManagementView(onBack: _goBackToDashboard);
-      case 'system':
-        return _SystemSettingsView(onBack: _goBackToDashboard);
       default:
         return _buildDashboard();
     }

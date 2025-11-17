@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:anunciacion/src/presentation/screens/config_screen.dart';
+import 'package:anunciacion/src/presentation/screens/notas_page.dart';
 import 'package:anunciacion/src/presentation/screens/qr_screen.dart';
 import 'package:anunciacion/src/presentation/screens/reports/reports_screen.dart';
 import 'package:anunciacion/src/presentation/screens/StudentsPage.dart';
@@ -9,25 +10,34 @@ import 'package:anunciacion/src/presentation/screens/grados/grades_subjects_mana
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:anunciacion/src/presentation/widgets/CustomCard.dart';
-import 'package:anunciacion/src/presentation/widgets/bottomBar.dart';
 import 'package:anunciacion/src/presentation/providers/providers.dart';
 
-class HomeLuxuryPage extends StatefulWidget {
+// Constantes para roles
+const int ROLE_ADMIN = 1;
+const int ROLE_DOCENTE = 2;
+
+class HomeLuxuryPage extends ConsumerStatefulWidget {
   const HomeLuxuryPage({super.key});
 
   @override
-  State<HomeLuxuryPage> createState() => _HomeLuxuryPageState();
+  ConsumerState<HomeLuxuryPage> createState() => _HomeLuxuryPageState();
 }
 
-class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
-  int _tab = 0;
-
+class _HomeLuxuryPageState extends ConsumerState<HomeLuxuryPage> {
   double _collapsePercent(double t, double max) => (t / max).clamp(0.0, 1.0);
 
   @override
   Widget build(BuildContext context) {
     const expandedHeight = 180.0;
     const collapsedHeight = 100.0;
+
+    final userState = ref.watch(userProvider);
+    final userRoleId = userState.currentUser?.roleId ?? 0;
+    final isAdmin = userRoleId == ROLE_ADMIN;
+    final isDocente = userRoleId == ROLE_DOCENTE;
+
+    // Construir lista de menús según el rol
+    final menuItems = _buildMenuItems(isAdmin, isDocente);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
@@ -71,109 +81,139 @@ class _HomeLuxuryPageState extends State<HomeLuxuryPage> {
                   mainAxisSpacing: 12,
                   childAspectRatio: 0.82,
                 ),
-                delegate: SliverChildListDelegate([
-                  CustomCard(
-                    imageUrl: 'assets/notas.png',
-                    title: 'Calificaciones',
-                    description: 'Consulta y registra notas por curso',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const GradesSubjectsManagementPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  CustomCard(
-                    imageUrl: 'assets/descarga.png',
-                    title: 'Pagos',
-                    description: 'Cuotas, estados y comprobantes',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const PaymentsManagementScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  CustomCard(
-                    imageUrl: 'assets/reportes.png',
-                    title: 'Reportes',
-                    description: 'Promedios y boletas por grado',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ReportsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  CustomCard(
-                    imageUrl: 'assets/estudiantes.png',
-                    title: 'Estudiantes',
-                    description: 'Perfiles, asistencia y familiares',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const StudentsPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  CustomCard(
-                    imageUrl: 'assets/asistencia.png',
-                    title: 'Registro Entrada y Salida',
-                    description: 'Registrar horarios de entrada y salida',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const QrScannerPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  CustomCard(
-                    imageUrl: 'assets/configuracion.png',
-                    title: 'Configuración',
-                    description: 'Preferencias y usuarios',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AdministrationPage(
-                              user: AdminUser(
-                                  name: 'Admin',
-                                  role: 'Admin',
-                                  permissions: [
-                                'manage_users',
-                                'manage_grades',
-                                'edit_students',
-                                'view_all'
-                              ])),
-                        ),
-                      );
-                    },
-                  ),
-                ]),
+                delegate: SliverChildListDelegate(menuItems),
               ),
             ),
           ],
         ),
       ),
-
-      // ======= Bottom bar elegante =======
-      bottomNavigationBar: BottomBar(
-        index: _tab,
-        onChanged: (i) => setState(() => _tab = i),
-      ),
     );
+  }
+
+  List<Widget> _buildMenuItems(bool isAdmin, bool isDocente) {
+    final items = <Widget>[];
+
+    // Calificaciones - Solo para Docente
+    if (isDocente) {
+      items.add(
+        CustomCard(
+          imageUrl: 'assets/notas.png',
+          title: 'Calificaciones',
+          description: 'Consulta y registra notas por curso',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const NotasPage(userRole: 'Docente'),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    // Pagos - Solo Admin
+    if (isAdmin) {
+      items.add(
+        CustomCard(
+          imageUrl: 'assets/descarga.png',
+          title: 'Pagos',
+          description: 'Cuotas, estados y comprobantes',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PaymentsManagementScreen(),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    // Reportes - Solo Admin
+    if (isAdmin) {
+      items.add(
+        CustomCard(
+          imageUrl: 'assets/reportes.png',
+          title: 'Reportes',
+          description: 'Promedios y boletas por grado',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const ReportsScreen(),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    // Estudiantes - Visible para Admin y Docente
+    if (isAdmin || isDocente) {
+      items.add(
+        CustomCard(
+          imageUrl: 'assets/estudiantes.png',
+          title: 'Estudiantes',
+          description: 'Perfiles, asistencia y familiares',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const StudentsPage(),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    // Registro Entrada y Salida - Visible para Admin y Docente
+    if (isAdmin || isDocente) {
+      items.add(
+        CustomCard(
+          imageUrl: 'assets/asistencia.png',
+          title: 'Registro Entrada y Salida',
+          description: 'Registrar horarios de entrada y salida',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const QrScannerPage(),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    // Configuración - Solo Admin
+    if (isAdmin) {
+      items.add(
+        CustomCard(
+          imageUrl: 'assets/configuracion.png',
+          title: 'Configuración',
+          description: 'Preferencias y usuarios',
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AdministrationPage(
+                    user: AdminUser(name: 'Admin', role: 'Admin', permissions: [
+                  'manage_users',
+                  'manage_grades',
+                  'edit_students',
+                  'view_all'
+                ])),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    return items;
   }
 }
 

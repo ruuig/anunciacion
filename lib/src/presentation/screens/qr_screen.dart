@@ -33,6 +33,10 @@ class _QrScannerPageState extends State<QrScannerPage>
   bool _loadingEntrySummary = true;
   bool _loadingExitSummary = true;
 
+  // Estudiantes registrados hoy
+  List<Attendance> _entryRegisteredToday = [];
+  List<Attendance> _exitRegisteredToday = [];
+
   bool showInFilters = true;
   bool showOutFilters = true;
 
@@ -49,11 +53,23 @@ class _QrScannerPageState extends State<QrScannerPage>
       final entrySummary = await _attendanceRepository.getEntrySummary();
       final exitSummary = await _attendanceRepository.getExitSummary();
 
+      // Cargar estudiantes que ya entraron hoy
+      final entryRegistered = await _attendanceRepository.getTodayAttendance();
+      final entryFiltered = entryRegistered
+          .where((a) => a.entryTime != null && a.exitTime == null)
+          .toList();
+
+      // Cargar estudiantes que ya salieron hoy
+      final exitFiltered =
+          entryRegistered.where((a) => a.exitTime != null).toList();
+
       if (mounted) {
         setState(() {
           _grades = grades;
           _entrySummary = entrySummary;
           _exitSummary = exitSummary;
+          _entryRegisteredToday = entryFiltered;
+          _exitRegisteredToday = exitFiltered;
           _loadingEntrySummary = false;
           _loadingExitSummary = false;
         });
@@ -80,10 +96,21 @@ class _QrScannerPageState extends State<QrScannerPage>
         gradeId: _selectedOutGrade?.id,
       );
 
+      // Recargar estudiantes registrados
+      final entryRegistered = await _attendanceRepository.getTodayAttendance();
+      final entryFiltered = entryRegistered
+          .where((a) => a.entryTime != null && a.exitTime == null)
+          .toList();
+
+      final exitFiltered =
+          entryRegistered.where((a) => a.exitTime != null).toList();
+
       if (mounted) {
         setState(() {
           _entrySummary = entrySummary;
           _exitSummary = exitSummary;
+          _entryRegisteredToday = entryFiltered;
+          _exitRegisteredToday = exitFiltered;
         });
       }
     } catch (e) {
@@ -300,6 +327,64 @@ class _QrScannerPageState extends State<QrScannerPage>
                   icon: Icons.person_add_outlined,
                   onPressed: () => _openManualEntryModal(),
                 ),
+
+                const SizedBox(height: 24),
+
+                // Resumen de estudiantes que ya entraron
+                if (_entryRegisteredToday.isNotEmpty) ...[
+                  const Text(
+                    'Estudiantes que ya entraron',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ..._entryRegisteredToday.take(5).map((student) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            border: Border.all(
+                                color: Colors.green[200]!, width: 1.5),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.check_circle,
+                                  color: Colors.green, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  student.studentName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+                  if (_entryRegisteredToday.length > 5)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '+${_entryRegisteredToday.length - 5} más',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
@@ -401,6 +486,64 @@ class _QrScannerPageState extends State<QrScannerPage>
                   icon: Icons.person_remove_outlined,
                   onPressed: () => _openManualExitModal(),
                 ),
+
+                const SizedBox(height: 24),
+
+                // Resumen de estudiantes que ya salieron
+                if (_exitRegisteredToday.isNotEmpty) ...[
+                  const Text(
+                    'Estudiantes que ya salieron',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ..._exitRegisteredToday.take(5).map((student) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green[50],
+                            border: Border.all(
+                                color: Colors.green[200]!, width: 1.5),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.check_circle,
+                                  color: Colors.green, size: 20),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  student.studentName,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )),
+                  if (_exitRegisteredToday.length > 5)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        '+${_exitRegisteredToday.length - 5} más',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
               ],
             ),
           ),
@@ -746,6 +889,11 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
         gradeId: _selectedGrade!.id,
       );
 
+      print('📚 [ENTRY] Estudiantes cargados: ${students.length}');
+      for (var s in students.take(3)) {
+        print('  - ${s.studentName} (${s.studentCode})');
+      }
+
       setState(() {
         _allStudents = students;
         _filteredStudents = students;
@@ -753,6 +901,7 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ [ENTRY] Error cargando estudiantes: $e');
       setState(() => _isLoading = false);
     }
   }
@@ -868,48 +1017,6 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Estudiante seleccionado - SOLO NOMBRE EN NEGRO GRANDE
-                  if (_selectedStudent != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 20, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green[400]!, width: 2),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _selectedStudent!.studentName.isNotEmpty
-                                  ? _selectedStudent!.studentName
-                                  : 'Estudiante',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF000000),
-                                letterSpacing: 0.5,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () =>
-                                setState(() => _selectedStudent = null),
-                            icon: const Icon(
-                              Icons.cancel,
-                              color: Colors.red,
-                              size: 32,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  const SizedBox(height: 16),
-
                   // Lista de estudiantes
                   if (_isLoading)
                     const Center(child: CircularProgressIndicator())
@@ -922,7 +1029,11 @@ class _ManualEntryModalState extends State<_ManualEntryModal> {
                     ..._filteredStudents.map((s) => Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: GestureDetector(
-                            onTap: () => setState(() => _selectedStudent = s),
+                            onTap: () {
+                              print(
+                                  '✅ [ENTRY] Seleccionado: ${s.studentName} (${s.studentCode})');
+                              setState(() => _selectedStudent = s);
+                            },
                             child: Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
@@ -1210,48 +1321,6 @@ class _ManualExitModalState extends State<_ManualExitModal> {
                     icon: Icons.search,
                     onChanged: _filterStudents,
                   ),
-                  const SizedBox(height: 16),
-
-                  // Estudiante seleccionado - SOLO NOMBRE EN NEGRO GRANDE
-                  if (_selectedStudent != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 20, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.green[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green[400]!, width: 2),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _selectedStudent!.studentName.isNotEmpty
-                                  ? _selectedStudent!.studentName
-                                  : 'Estudiante',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF000000),
-                                letterSpacing: 0.5,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () =>
-                                setState(() => _selectedStudent = null),
-                            icon: const Icon(
-                              Icons.cancel,
-                              color: Colors.red,
-                              size: 32,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
                   const SizedBox(height: 16),
 
                   // Lista de estudiantes
